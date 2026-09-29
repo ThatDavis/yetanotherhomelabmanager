@@ -47,6 +47,7 @@
 - Production: Fastify serves the built SPA from `web/dist` and the API together
 - `buildServer()` factory pattern so tests use `app.inject` without listening
 - Migrations always via `prisma migrate deploy` at container start — never `db push` in prod
+- UI patterns (shell, status tokens, jobs, drawers) follow `docs/UI.md` — amend the doc, never drift per-screen
 
 ## Key Design Decisions
 

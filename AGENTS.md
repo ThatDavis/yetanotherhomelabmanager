@@ -65,6 +65,7 @@ All agents follow this git discipline. It should be invisible to the user — no
 | File | Purpose |
 |------|---------|
 | `docs/ARCHITECTURE.md` | Stack decisions, project structure, key conventions |
+| `docs/UI.md` | UI/UX guidelines — shell, status semantics, jobs, patterns |
 | `docs/SPEC.md` | Feature specifications with user flows, edge cases, acceptance criteria |
 | `PLAN.md` | Roadmap and milestones |
 | `.agent/CONTINUITY.md` | Canonical project briefing and progress |
