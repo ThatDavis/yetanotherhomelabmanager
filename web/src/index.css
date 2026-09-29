@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Registered so --chamfer-bg changes (e.g. hover) transition smoothly. */
+@property --chamfer-bg {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+
 @theme {
   /* Catppuccin Mocha */
   --color-rosewater: #f5e0dc;
@@ -80,29 +87,24 @@
 
 @layer components {
   /* Retro-terminal decorative utilities (docs/UI.md §6 — decorative surfaces only) */
+  /* Two-layer chamfer: the element is the border (bg = line color, clipped),
+     an inset ::before carries the surface bg. Uniform 1px rim incl. diagonals.
+     isolation creates the stacking context that keeps z-index:-1 above the rim. */
   .chamfer {
     --chamfer-line: var(--color-surface1);
+    --chamfer-bg: var(--color-mantle);
     position: relative;
+    isolation: isolate;
+    background: var(--chamfer-line);
     clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
   }
-  /* clip-path removes the border along the 45° cuts — redraw it with rotated strokes.
-     2px tall, centered on the clip edge: the outer half is clipped, leaving 1px. */
-  .chamfer::before,
-  .chamfer::after {
+  .chamfer::before {
     content: "";
     position: absolute;
-    width: 14.15px; /* 10px cut × √2 */
-    height: 2px;
-    background: var(--chamfer-line);
-    transform: rotate(45deg);
-  }
-  .chamfer::before {
-    top: 4px;
-    right: -2.1px;
-  }
-  .chamfer::after {
-    bottom: 4px;
-    left: -2.1px;
+    inset: 1px;
+    z-index: -1;
+    background: var(--chamfer-bg);
+    transition: background 150ms ease-out;
   }
   .chamfer-accent {
     --chamfer-line: color-mix(in oklab, var(--color-accent) 60%, transparent);
