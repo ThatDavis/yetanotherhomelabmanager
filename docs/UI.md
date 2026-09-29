@@ -60,16 +60,24 @@ Rules:
 - **Primary accent: mauve** — links, primary buttons, active nav, focus/glow tint. One accent only; status hues (§3) are reserved for status, never decoration.
 - Compact spacing, dense tables. Light theme: optional later, not a goal; semantic tokens make it cheap if added.
 
-### Cyberpunk accents (containment rules)
+### Retro-terminal accents (containment rules)
+
+Inspiration: 80s industrial sci-fi terminals (Alien's MU/TH/UR, Nostromo consoles) — angular and utilitarian, **not** neon-noir cyberpunk. The vibe comes from shape, typography, and texture; hues stay Catppuccin.
 
 - Allowed **only on decorative surfaces**: login screen, dashboard header, empty states, wordmark.
-- Repertoire: subtle mauve neon-glow on focus/active elements, gradient wordmark (mauve→sapphire), faint grid or scanline texture behind the login card.
+- Repertoire:
+  - **Angular geometry** — cut-corner (chamfered) panels and buttons via `clip-path`, square corners elsewhere; no rounded-pill playfulness
+  - **Typography** — monospace for headings/labels on themed surfaces, uppercase micro-labels with wide tracking (e.g. `SYS.STATUS // NODES`)
+  - **Phosphor glow** — subtle single-color text-shadow (mauve or sapphire), restrained; no multi-color neon wash
+  - **Texture** — faint scanlines or CRT-style horizontal banding behind the login card / dashboard header
+  - **Framing** — thin `surface2` rule lines, corner ticks, panel labels like `▚ NODE ROSTER`
 - **Never** on: data tables, drawer forms, status badges, audit log, job output/logs. Those stay flat and readable.
 
 ### Animations (simple, CSS-only)
 
 - Duration 150–250ms, `ease-out` for entrances, `ease-in` for exits. No animation libraries.
 - Standard set: drawer slide-in, toast enter/exit, skeleton shimmer while loading, slow pulse (2s) on `running` status, hover/focus transitions on interactive elements.
+- Themed surfaces may add one terminal-flavored touch (e.g. boot-sequence text reveal or blinking block cursor on the login screen) — one per surface, never in data views.
 - All motion disabled under `prefers-reduced-motion`.
 
 ## 7. Responsive Floor
@@ -85,5 +93,5 @@ Rules:
 - [ ] Any operation >2s runs as a job per §5, not a spinner-blocking form
 - [ ] Monospace for machine identifiers
 - [ ] Works at 1280px wide without horizontal scroll of the page (tables excepted)
-- [ ] Cyberpunk accents only on decorative surfaces (§6)
+- [ ] Retro-terminal accents only on decorative surfaces (§6)
 - [ ] Motion is CSS-only, 150–250ms, disabled under `prefers-reduced-motion`
