@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: docker
+    container: node:22
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Biome check
+        run: pnpm check
+      - name: Prisma validate
+        run: pnpm --filter @hlm/server prisma:validate
+      - name: Test
+        run: pnpm test
+      - name: Build
+        run: pnpm build

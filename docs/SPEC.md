@@ -1,0 +1,84 @@
+# Specification — Home Lab Manager
+
+> Last updated: 2026-09-28
+
+## Overview
+
+Home Lab Manager is a single-operator web application for managing a Proxmox-based homelab: two PVE nodes (one offsite, reached over WireGuard/Tailscale) plus a separate PBS host, running a mix of Debian, RHEL, and other Linux guests. It provides inventory, monitoring, scheduled updates with post-update verification and email reports, PBS backup oversight with automated restore testing, and cross-node container migration. Security and auditing are core: passkey-only auth, secrets encrypted at rest, and an audit trail on every action. It is ansible-like but deliberately narrower in scope; host access is SSH now, with a lightweight agent as a possible later addition.
+
+## Milestone 1 — Foundation
+
+### Features
+
+#### Feature: Passkey authentication
+**Description:** Single operator registers a passkey (WebAuthn) and logs in/out. No password flow. RP_ID and ORIGIN are env-configured to match the reverse-proxy hostname.
+**Acceptance Criteria:**
+- [ ] Operator can register a passkey through the HTTPS proxy
+- [ ] Operator can log in and log out; unauthenticated requests to protected routes are rejected
+- [ ] WebAuthn RP ID/origin mismatch fails loudly with a clear error, not a silent browser failure
+
+#### Feature: Audit log
+**Description:** Append-only record of every mutating action and every external call (PVE/PBS API, SSH): actor, action, target, timestamp, result (incl. error text on failure).
+**Acceptance Criteria:**
+- [ ] Every mutating API route writes an audit entry
+- [ ] Failed external calls produce entries including the error
+- [ ] Entries are viewable in the UI, newest first
+
+#### Feature: Encrypted secrets store
+**Description:** API tokens, SSH private key, and SMTP password are AES-GCM encrypted at rest with an env-supplied MASTER_KEY.
+**Acceptance Criteria:**
+- [ ] Secrets in the database are ciphertext (verifiable by inspecting rows)
+- [ ] App refuses to start in production without MASTER_KEY
+- [ ] MASTER_KEY backup requirement documented (README/.env.example)
+
+#### Feature: PVE/PBS node registration + connection test
+**Description:** Register Proxmox VE and Proxmox Backup Server nodes by URL + API token. "Test connection" verifies the token and required privileges; minimal privilege set documented.
+**Acceptance Criteria:**
+- [ ] Node can be added, edited, removed
+- [ ] Test connection reports success/failure with the underlying error
+- [ ] 403/insufficient-privilege responses surface clearly
+
+#### Feature: Inventory sync
+**Description:** On demand (and later on a schedule), pull VMs, LXCs, and storage from PVE nodes; backup jobs from PBS. Display in the UI.
+**Acceptance Criteria:**
+- [ ] Inventory lists guests with node, type, VMID, name, status
+- [ ] PBS backup jobs listed with last-run status
+- [ ] Sync failures are per-node (one bad node doesn't blank the rest) and audited
+
+#### Feature: Guest host registration + SSH executor
+**Description:** Tool generates a master SSH keypair (private key stored encrypted) and emits a bootstrap script the operator runs once per host to install the public key. SSH executor runs commands on registered hosts and returns output.
+**Acceptance Criteria:**
+- [ ] Keypair generated once; public key downloadable/copyable via bootstrap script
+- [ ] Run a command on a registered host; stdout/stderr/exit code returned and audited
+- [ ] Works against Debian and RHEL-family guests
+
+#### Feature: Deployable app shell
+**Description:** React SPA served by the Fastify server; Docker Compose stack (app + Postgres) with automatic Prisma migrations; plain HTTP behind the operator's existing reverse proxy/CA.
+**Acceptance Criteria:**
+- [ ] `docker compose up -d --build` starts the stack; migrations apply automatically
+- [ ] SPA loads through the proxy and can complete passkey login
+- [ ] CI green: vitest, biome check, prisma validate, production build
+
+---
+
+## Future Milestones
+
+- **M2 — Monitoring:** PVE/PBS dashboards; health checks (liveness, service endpoints, guest agent); alerting.
+- **M3 — Updates:** scheduled updates for hosts/guests/containers; reboot orchestration; post-update health verification; email reports via external SMTP relay.
+- **M4 — Backups:** PBS job status + stale-backup alerts; automated restore testing (restore to a scratch guest, verify boot).
+- **M5 — Migration:** cross-node container migration between VMs, informed by dockermigrate's approach (SSH + rsync, dry-run, rollback), reimplemented in this codebase.
+
+Full acceptance criteria will be defined when each milestone starts.
+
+## Non-Functional Requirements
+
+- Passkey-only auth; secrets AES-GCM encrypted at rest; audit trail on every action
+- Responsive UI; long operations as background jobs with live status
+- Scale from 2 nodes upward; offsite node over VPN
+- Mixed guest distros (Debian, RHEL, others) — nothing distro-specific without abstraction
+
+## Open Questions
+
+- [ ] Exact Proxmox API token minimal privilege set per feature — Owner: operator, Due: M1 implementation
+- [ ] Which PVE node hosts the app itself (update orchestration must handle self-host node) — Owner: operator, Due: before M3
+- [ ] Tamper-evidence (hash-chained audit log) deferred — revisit if threat model changes — Due: TBD
