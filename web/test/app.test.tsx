@@ -1,8 +1,27 @@
 import { renderToString } from "react-dom/server";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { expect, test } from "vitest";
-import { App } from "../src/App";
+import { routes } from "../src/App";
 
-test("App renders the project title", () => {
-  const html = renderToString(<App />);
-  expect(html).toContain("Home Lab Manager");
+function renderAt(url: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [url] });
+  return renderToString(<RouterProvider router={router} />);
+}
+
+test("sidebar renders all M1 sections on every page", () => {
+  const html = renderAt("/");
+  for (const section of ["Dashboard", "Nodes", "Guests", "Jobs", "Audit", "Settings"]) {
+    expect(html).toContain(section);
+  }
+});
+
+test("dashboard lands at / with empty-state CTA", () => {
+  const html = renderAt("/");
+  expect(html).toContain("Dashboard");
+  expect(html).toContain("ADD YOUR FIRST PVE NODE");
+});
+
+test("section routes render their pages", () => {
+  expect(renderAt("/nodes")).toContain("PVE/PBS node registration");
+  expect(renderAt("/audit")).toContain("Audit Log");
 });

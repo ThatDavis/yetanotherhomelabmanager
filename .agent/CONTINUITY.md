@@ -14,7 +14,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - [ ] PVE/PBS node registration + per-node connection test
 - [ ] Inventory sync (PVE guests/storage, PBS backup jobs)
 - [ ] Guest host registration: master SSH keypair + bootstrap script; SSH executor
-- [ ] App shell behind existing reverse proxy (RP_ID/ORIGIN env)
+- [ ] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
 
 ### Future Milestones
 - M2 Monitoring: dashboards; liveness/service/guest-agent health checks; alerting
@@ -41,6 +41,12 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 | Date | What was done |
 |------|---------------|
 | 2026-09-28 | Project scaffold: pnpm workspace (server + web), Fastify /health, React SPA shell, Prisma/Postgres, Biome, Vitest (all green), Dockerfile + compose, full doc set. Built server smoke-tested live (`/health` → ok). |
+| 2026-09-28 | Started feature: App shell (no issue — Forgejo local-only) on branch feature/app-shell. |
+|  |    ✓ Catppuccin Mocha + status tokens in Tailwind theme |
+|  |    ✓ Router + sidebar shell + section placeholders |
+|  |    ✓ Dashboard page (final M2 layout, modest content) |
+|  |    ✓ Fastify serves built SPA in production |
+|  |    ✓ Tests + full verification |
 
 ## [DISCOVERIES]
 
