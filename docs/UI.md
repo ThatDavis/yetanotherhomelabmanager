@@ -23,13 +23,13 @@ Single-operator **dark, dense console**. Information density over decoration; ev
 
 ## 3. Status Semantics (fixed, global)
 
-| State | Color | Meaning |
-|-------|-------|---------|
+| State | Catppuccin hue | Meaning |
+|-------|----------------|---------|
 | ok | green | healthy / succeeded |
-| warn | amber | degraded / attention needed |
+| warn | peach | degraded / attention needed |
 | error | red | failed / down |
-| unknown | gray | offline / unreachable / no data |
-| running | blue | job in progress |
+| unknown | overlay1 | offline / unreachable / no data |
+| running | sapphire | job in progress |
 
 Rules:
 - **Never color alone** — always paired with an icon or label (accessibility + gray/dark-theme safety).
@@ -54,11 +54,23 @@ Rules:
 - Every job detail links to its **audit entries** and captured logs/output.
 - Jobs that mutate infrastructure show a **pre-flight summary** before starting (what will happen, on which targets) — pattern from dockermigrate's plan review.
 
-## 6. Theme & Density
+## 6. Theme, Color & Motion
 
-- Dark-first (slate/zinc family), compact spacing, dense tables.
-- Light theme: optional later; not a goal. If added, status tokens make it cheap.
-- Accent color: single restrained accent for primary actions/links; status colors reserved for status only.
+- **Palette: Catppuccin Mocha** (darkest flavor), imported as the Tailwind theme source. Base surfaces: `base`/`mantle`/`crust`; text: `text`/`subtext0`/`subtext1`; borders: `surface0`–`surface2`.
+- **Primary accent: mauve** — links, primary buttons, active nav, focus/glow tint. One accent only; status hues (§3) are reserved for status, never decoration.
+- Compact spacing, dense tables. Light theme: optional later, not a goal; semantic tokens make it cheap if added.
+
+### Cyberpunk accents (containment rules)
+
+- Allowed **only on decorative surfaces**: login screen, dashboard header, empty states, wordmark.
+- Repertoire: subtle mauve neon-glow on focus/active elements, gradient wordmark (mauve→sapphire), faint grid or scanline texture behind the login card.
+- **Never** on: data tables, drawer forms, status badges, audit log, job output/logs. Those stay flat and readable.
+
+### Animations (simple, CSS-only)
+
+- Duration 150–250ms, `ease-out` for entrances, `ease-in` for exits. No animation libraries.
+- Standard set: drawer slide-in, toast enter/exit, skeleton shimmer while loading, slow pulse (2s) on `running` status, hover/focus transitions on interactive elements.
+- All motion disabled under `prefers-reduced-motion`.
 
 ## 7. Responsive Floor
 
@@ -73,3 +85,5 @@ Rules:
 - [ ] Any operation >2s runs as a job per §5, not a spinner-blocking form
 - [ ] Monospace for machine identifiers
 - [ ] Works at 1280px wide without horizontal scroll of the page (tables excepted)
+- [ ] Cyberpunk accents only on decorative surfaces (§6)
+- [ ] Motion is CSS-only, 150–250ms, disabled under `prefers-reduced-motion`
