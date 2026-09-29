@@ -101,10 +101,20 @@
   .chamfer::before {
     content: "";
     position: absolute;
-    inset: 1px;
+    inset: 0;
     z-index: -1;
     background: var(--chamfer-bg);
     transition: background 150ms ease-out;
+    /* Same polygon as the parent, offset 1px inward — a plain inset rectangle
+       would touch the clip edge along the diagonals and leave no rim there. */
+    clip-path: polygon(
+      1px 1px,
+      calc(100% - 10px) 1px,
+      calc(100% - 1px) 10px,
+      calc(100% - 1px) calc(100% - 1px),
+      10px calc(100% - 1px),
+      1px calc(100% - 10px)
+    );
   }
   .chamfer-accent {
     --chamfer-line: color-mix(in oklab, var(--color-accent) 60%, transparent);
