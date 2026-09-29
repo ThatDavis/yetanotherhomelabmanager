@@ -81,7 +81,31 @@
 @layer components {
   /* Retro-terminal decorative utilities (docs/UI.md §6 — decorative surfaces only) */
   .chamfer {
+    --chamfer-line: var(--color-surface1);
+    position: relative;
     clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  /* clip-path removes the border along the 45° cuts — redraw it with rotated strokes.
+     2px tall, centered on the clip edge: the outer half is clipped, leaving 1px. */
+  .chamfer::before,
+  .chamfer::after {
+    content: "";
+    position: absolute;
+    width: 14.15px; /* 10px cut × √2 */
+    height: 2px;
+    background: var(--chamfer-line);
+    transform: rotate(45deg);
+  }
+  .chamfer::before {
+    top: 4px;
+    right: -2.1px;
+  }
+  .chamfer::after {
+    bottom: 4px;
+    left: -2.1px;
+  }
+  .chamfer-accent {
+    --chamfer-line: color-mix(in oklab, var(--color-accent) 60%, transparent);
   }
 
   .phosphor {

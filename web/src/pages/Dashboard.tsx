@@ -12,7 +12,7 @@ export function Dashboard() {
             <p className="font-mono text-sm text-subtext0">No nodes registered yet.</p>
             <Link
               to="/nodes"
-              className="chamfer mt-4 inline-block border border-accent/60 bg-accent/10 px-4 py-2 font-mono text-sm text-accent transition-colors duration-150 hover:bg-accent/20"
+              className="chamfer chamfer-accent mt-4 inline-block border border-accent/60 bg-accent/10 px-4 py-2 font-mono text-sm text-accent transition-colors duration-150 hover:bg-accent/20"
             >
               + ADD YOUR FIRST PVE NODE
             </Link>
