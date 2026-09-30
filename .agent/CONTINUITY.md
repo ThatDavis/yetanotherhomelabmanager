@@ -10,7 +10,7 @@
 Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host registration, inventory view, full audit trail, Docker Compose deploy.
 - [x] Passkey (WebAuthn) auth for single operator
 - [x] Audit log (append-only; all mutations + external calls; UI viewer)
-- [ ] Encrypted secrets store (AES-GCM, env MASTER_KEY, fail-loud without it)
+- [x] Encrypted secrets store (AES-GCM, env MASTER_KEY, fail-loud without it)
 - [x] Inventory sync (PVE guests/storage, PBS backup jobs)
 - [x] Guest host registration: master SSH keypair + bootstrap script; SSH executor
 - [x] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
@@ -89,6 +89,13 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Tests (filters, pagination) |
 |  |    ✓ Browser verification with real data |
 | 2026-09-30 | Completed feature: Audit log viewer (PR #11). DoD all PASS; browser-verified with real data. |
+| 2026-09-30 | Started feature: Secrets management (Issue #12) on branch feature/12-secrets-management. |
+|  |    ✓ crypto: explicit-key support |
+|  |    ✓ secrets module: list, guarded delete, rotateMasterKey (oldKey param) |
+|  |    ✓ API: list, rotate-key, guarded delete (audited) |
+|  |    ✓ Settings SECRETS panel (typed-confirm rotation) |
+|  |    ✓ Tests + rotation mutex + serial test pool |
+| 2026-09-30 | Completed feature: Secrets management (PR #13). DoD all PASS; container deployment verified end-to-end (podman). |
 
 ## [DISCOVERIES]
 
@@ -98,6 +105,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - 2026-09-30: Node TLS session resumption returns empty peer certificates — any fingerprint pinning must disable session caching (maxCachedSessions: 0).
 - 2026-09-30: PVE permissions: /api2/json/nodes works with minimal perms, but /cluster/resources needs the ACL on path "/" — and with Privilege Separation ON, the token needs its OWN ACL entry (user perms don't flow). PVEAuditor on / covers sync.
 - 2026-09-30: Virtual authenticators (CDP) don't persist credentials across browser tabs — WebAuthn e2e must run register+login in one tab session. Test DB cleanup must be scoped to test-created rows once real operator data exists.
+- 2026-09-30: rotateMasterKey originally decrypted only with the current env key — rotating BACK was impossible; combined with prefix-based test cleanup and parallel vitest workers on one dev DB, this stranded real secrets repeatedly. Fixed with oldKeyHex param + mutex + singleFork pool + scoped cleanup. Never export MASTER_KEY into the interactive shell (test env.ts prefers inherited vars).
 
 ## [OUTCOMES]
 
@@ -120,3 +128,6 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 
 ### Passkey authentication (2026-09-30)
 - WebAuthn ceremonies via SimpleWebAuthn; DB sessions (30d, revocable); open first-run registration then closed; themed login page; Settings passkey management; /api/* guarded. Verified end-to-end in Chromium (virtual authenticator) and with the operator's real passkey. Gotcha recorded: test cleanup must never delete operator credentials.
+
+### Secrets management (2026-09-30)
+- Secrets list (metadata only), guarded delete, master key rotation with typed-confirm UI; rotateMasterKey redesigned with oldKeyHex + mutex after the rotate-back-impossible bug stranded secrets; test suite serialized (singleFork) after repeated cross-worker DB races. Container deployment verified end-to-end via podman.

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
+import { SecretsPanel } from "../components/SecretsPanel";
 
 type Credential = { id: string; name: string; createdAt: string; lastUsedAt: string };
 
@@ -84,6 +85,10 @@ export function Settings() {
           </table>
         )}
       </Panel>
+
+      <div className="mt-6">
+        <SecretsPanel />
+      </div>
     </>
   );
 }
