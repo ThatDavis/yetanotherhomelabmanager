@@ -28,6 +28,13 @@ function secretId(nodeId: string): string {
   return `node-token-${nodeId}`;
 }
 
+/** Fill in the default Proxmox port when the URL has none (pve 8006 / pbs 8007). */
+function withDefaultPort(url: string, type: "pve" | "pbs"): string {
+  const u = new URL(url);
+  if (!u.port) u.port = type === "pbs" ? "8007" : "8006";
+  return u.toString().replace(/\/$/, "");
+}
+
 export function nodeRoutes(app: FastifyInstance) {
   app.get("/api/nodes", async () => prisma.node.findMany({ orderBy: { name: "asc" } }));
 
@@ -36,7 +43,8 @@ export function nodeRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid node", details: parsed.error.issues });
     }
-    const { tokenSecret, ...fields } = parsed.data;
+    const { tokenSecret, ...raw } = parsed.data;
+    const fields = { ...raw, url: withDefaultPort(raw.url, raw.type) };
     const start = Date.now();
     try {
       const node = await prisma.node.create({ data: fields });
@@ -75,7 +83,10 @@ export function nodeRoutes(app: FastifyInstance) {
     const fields: { name?: string; type?: string; url?: string; tokenId?: string } = {};
     if (raw.name !== undefined) fields.name = raw.name;
     if (raw.type !== undefined) fields.type = raw.type;
-    if (raw.url !== undefined) fields.url = raw.url;
+    if (raw.url !== undefined) {
+      const effectiveType = raw.type ?? (node.type === "pbs" ? "pbs" : "pve");
+      fields.url = withDefaultPort(raw.url, effectiveType);
+    }
     if (raw.tokenId !== undefined) fields.tokenId = raw.tokenId;
     // URL changes invalidate the pinned fingerprint (different server possible)
     const tlsFingerprint = fields.url && fields.url !== node.url ? "" : node.tlsFingerprint;

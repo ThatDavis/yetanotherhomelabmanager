@@ -6,6 +6,7 @@ import { StatusBadge } from "../components/StatusBadge";
 
 type DrawerState =
   | { kind: "add" }
+  | { kind: "edit"; node: Node }
   | { kind: "test" | "sync"; node: Node; result: ProbeResult | null; error: string | null }
   | null;
 
@@ -120,6 +121,13 @@ export function Nodes() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => setDrawer({ kind: "edit", node: n })}
+                      className="text-subtext0 hover:text-text"
+                    >
+                      EDIT
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => unpin(n)}
                       className="text-subtext0 hover:text-text"
                     >
@@ -140,21 +148,22 @@ export function Nodes() {
         </table>
       )}
 
-      <AddNodeDrawer
-        open={drawer?.kind === "add"}
+      <NodeFormDrawer
+        open={drawer?.kind === "add" || drawer?.kind === "edit"}
+        node={drawer?.kind === "edit" ? drawer.node : undefined}
         onClose={() => setDrawer(null)}
-        onAdded={() => {
+        onSaved={() => {
           setDrawer(null);
           refresh();
         }}
       />
 
       <Drawer
-        title={`${drawer?.kind === "sync" ? "NODE.SYNC" : "NODE.TEST"} // ${drawer && drawer.kind !== "add" ? drawer.node.name : ""}`}
+        title={`${drawer?.kind === "sync" ? "NODE.SYNC" : "NODE.TEST"} // ${drawer && (drawer.kind === "test" || drawer.kind === "sync") ? drawer.node.name : ""}`}
         open={drawer?.kind === "test" || drawer?.kind === "sync"}
         onClose={() => setDrawer(null)}
       >
-        {drawer && drawer.kind !== "add" && (
+        {drawer && (drawer.kind === "test" || drawer.kind === "sync") && (
           <>
             {!drawer.result && !drawer.error && (
               <p className="font-mono text-sm text-status-running">Running…</p>
@@ -180,15 +189,18 @@ export function Nodes() {
   );
 }
 
-function AddNodeDrawer({
+function NodeFormDrawer({
   open,
+  node,
   onClose,
-  onAdded,
+  onSaved,
 }: {
   open: boolean;
+  node?: Node; // set when editing
   onClose: () => void;
-  onAdded: () => void;
+  onSaved: () => void;
 }) {
+  const editing = node !== undefined;
   const [form, setForm] = useState({
     name: "",
     type: "pve" as "pve" | "pbs",
@@ -199,14 +211,48 @@ function AddNodeDrawer({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      setForm(
+        node
+          ? {
+              name: node.name,
+              type: node.type,
+              url: node.url,
+              tokenId: node.tokenId,
+              tokenSecret: "",
+            }
+          : { name: "", type: "pve", url: "", tokenId: "", tokenSecret: "" },
+      );
+      setError(null);
+    }
+  }, [open, node]);
+
+  // Type dropdown carries the default port; swap it in the URL when it matches one
+  const changeType = (type: "pve" | "pbs") => {
+    const from = type === "pbs" ? "8006" : "8007";
+    const to = type === "pbs" ? "8007" : "8006";
+    setForm({ ...form, type, url: form.url.replace(new RegExp(`:${from}$`), `:${to}`) });
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await api("/nodes", { method: "POST", body: JSON.stringify(form) });
-      setForm({ name: "", type: "pve", url: "", tokenId: "", tokenSecret: "" });
-      onAdded();
+      const body: Record<string, string> = {
+        name: form.name,
+        type: form.type,
+        url: form.url,
+        tokenId: form.tokenId,
+      };
+      if (form.tokenSecret) body.tokenSecret = form.tokenSecret;
+      if (editing) {
+        await api(`/nodes/${node.id}`, { method: "PATCH", body: JSON.stringify(body) });
+      } else {
+        await api("/nodes", { method: "POST", body: JSON.stringify(body) });
+      }
+      onSaved();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -214,57 +260,54 @@ function AddNodeDrawer({
     }
   };
 
+  const field = (key: "name" | "url" | "tokenId", label: string, placeholder = "") => (
+    <label className="block">
+      <span className="micro-label">{label}</span>
+      <input
+        className={`${inputCls} mt-1`}
+        placeholder={placeholder}
+        value={form[key]}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+        required
+      />
+    </label>
+  );
+
   return (
-    <Drawer title="REGISTER // NODE" open={open} onClose={onClose}>
+    <Drawer
+      title={editing ? `EDIT // ${node.name}` : "REGISTER // NODE"}
+      open={open}
+      onClose={onClose}
+    >
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <label className="block">
-          <span className="micro-label">NAME (lowercase-dashes)</span>
-          <input
-            className={`${inputCls} mt-1`}
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-        </label>
+        {field("name", "NAME (lowercase-dashes)")}
         <label className="block">
           <span className="micro-label">TYPE</span>
           <select
             className={`${inputCls} mt-1`}
             value={form.type}
-            onChange={(e) => setForm({ ...form, type: e.target.value as "pve" | "pbs" })}
+            onChange={(e) => changeType(e.target.value as "pve" | "pbs")}
           >
             <option value="pve">PVE (port 8006)</option>
             <option value="pbs">PBS (port 8007)</option>
           </select>
         </label>
+        {field(
+          "url",
+          "URL (port optional — defaults by type)",
+          form.type === "pbs" ? "https://pbs.lab:8007" : "https://pve.lab:8006",
+        )}
+        {field("tokenId", "API TOKEN ID (user@realm!name)", "yahlm@pam!api")}
         <label className="block">
-          <span className="micro-label">URL</span>
-          <input
-            className={`${inputCls} mt-1`}
-            placeholder={form.type === "pbs" ? "https://pbs.lab:8007" : "https://pve.lab:8006"}
-            value={form.url}
-            onChange={(e) => setForm({ ...form, url: e.target.value })}
-            required
-          />
-        </label>
-        <label className="block">
-          <span className="micro-label">API TOKEN ID (user@realm!name)</span>
-          <input
-            className={`${inputCls} mt-1`}
-            placeholder="yahlm@pam!api"
-            value={form.tokenId}
-            onChange={(e) => setForm({ ...form, tokenId: e.target.value })}
-            required
-          />
-        </label>
-        <label className="block">
-          <span className="micro-label">API TOKEN SECRET</span>
+          <span className="micro-label">
+            {editing ? "API TOKEN SECRET (blank = keep current)" : "API TOKEN SECRET"}
+          </span>
           <input
             type="password"
             className={`${inputCls} mt-1`}
             value={form.tokenSecret}
             onChange={(e) => setForm({ ...form, tokenSecret: e.target.value })}
-            required
+            required={!editing}
           />
         </label>
         {error && <p className="font-mono text-sm text-status-error">{error}</p>}
@@ -273,7 +316,7 @@ function AddNodeDrawer({
           disabled={busy}
           className="chamfer chamfer-accent px-4 py-2 font-mono text-sm text-accent [--chamfer-bg:color-mix(in_oklab,var(--color-accent)_10%,var(--color-mantle))] hover:[--chamfer-bg:color-mix(in_oklab,var(--color-accent)_20%,var(--color-mantle))] disabled:opacity-50"
         >
-          {busy ? "REGISTERING…" : "REGISTER NODE"}
+          {busy ? "SAVING…" : editing ? "SAVE CHANGES" : "REGISTER NODE"}
         </button>
       </form>
     </Drawer>
