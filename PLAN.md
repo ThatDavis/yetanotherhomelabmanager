@@ -52,17 +52,10 @@
 
 ## Active Feature
 
-**PVE/PBS node registration + connection test** — branch `feature/4-pve-pbs-node-registration` (Milestone 1, issue #4)
-
-Sub-tasks:
-- [x] Prisma Node model + migration
-- [x] Proxmox API client (token auth, TOFU TLS pinning)
-- [x] node.test step (version + privilege probe)
-- [x] API: nodes CRUD + test + unpin (token encrypted)
-- [x] Nodes page UI
-- [x] Tests + verification (real-TLS mock PVE server)
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
 - **App shell** (Milestone 1, 2026-09-29) — Catppuccin Mocha themed sidebar shell, react-router, dashboard, production SPA serving
 - **Guest host registration + SSH executor** (Milestone 1, 2026-09-30) — master keypair + bootstrap, step contract with mandatory audit, health.check probe, Guests UI (issue #2)
+- **PVE/PBS node registration + connection test** (Milestone 1, 2026-09-30) — encrypted API tokens, TOFU fingerprint pinning, node.test probe (issue #4)

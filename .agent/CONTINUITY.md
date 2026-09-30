@@ -11,8 +11,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - [ ] Passkey (WebAuthn) auth for single operator
 - [ ] Audit log (append-only; all mutations + external calls; UI viewer)
 - [ ] Encrypted secrets store (AES-GCM, env MASTER_KEY, fail-loud without it)
-- [ ] PVE/PBS node registration + per-node connection test
-- [ ] Inventory sync (PVE guests/storage, PBS backup jobs)
+- [x] PVE/PBS node registration + per-node connection test
 - [x] Guest host registration: master SSH keypair + bootstrap script; SSH executor
 - [x] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
 
@@ -65,6 +64,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ API: nodes CRUD + test + unpin (token encrypted) |
 |  |    ✓ Nodes page UI |
 |  |    ✓ Tests + verification (real-TLS mock PVE server) |
+| 2026-09-30 | Completed feature: PVE/PBS node registration + connection test (PR #5). DoD all PASS; TOFU lifecycle verified against real-TLS mock. |
 
 ## [DISCOVERIES]
 
@@ -79,3 +79,6 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 
 ### Guest host registration + SSH executor (2026-09-30)
 - Host CRUD + master ed25519 keypair (encrypted at rest) + idempotent bootstrap script; SSH executor with combined tagged stream; step contract with mandatory audit (health.check probe); pulled forward minimal crypto + audit writer. Verified end-to-end on podman sshd; 19/19 tests.
+
+### PVE/PBS node registration + connection test (2026-09-30)
+- Node CRUD with encrypted API tokens; Proxmox client with TOFU fingerprint pinning (pin/mismatch/unpin); node.test step with version + privilege probes; real-TLS mock test suite (24/24). Real Proxmox response shapes still unverified — first live test on homelab.
