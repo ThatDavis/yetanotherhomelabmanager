@@ -52,7 +52,14 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**Audit log viewer** — branch `feature/10-audit-log-viewer` (Milestone 1, issue #10)
+
+Sub-tasks:
+- [x] GET /api/audit: filters + cursor pagination
+- [x] Audit page UI (table, filters, expandable rows)
+- [x] Coverage: auth.logout audited
+- [x] Tests (filters, pagination)
+- [x] Browser verification with real data
 
 ## Completed Features
 

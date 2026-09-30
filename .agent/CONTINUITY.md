@@ -82,6 +82,12 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Settings passkey management |
 |  |    ✓ Tests + full ceremony verification (virtual authenticator) |
 | 2026-09-30 | Completed feature: Passkey authentication (PR #9). DoD all PASS; full ceremony verified with virtual authenticator + operator's real passkey registered. |
+| 2026-09-30 | Started feature: Audit log viewer (Issue #10) on branch feature/10-audit-log-viewer. |
+|  |    ✓ GET /api/audit: filters + cursor pagination |
+|  |    ✓ Audit page UI (table, filters, expandable rows) |
+|  |    ✓ Coverage: auth.logout audited |
+|  |    ✓ Tests (filters, pagination) |
+|  |    ✓ Browser verification with real data |
 
 ## [DISCOVERIES]
 
