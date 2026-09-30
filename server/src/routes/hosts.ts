@@ -80,12 +80,4 @@ export function hostRoutes(app: FastifyInstance) {
     if (!host) return reply.code(404).send({ error: "host not found" });
     return healthCheck(host);
   });
-
-  app.get("/api/audit", async (req) => {
-    const { limit } = req.query as { limit?: string };
-    return prisma.auditEntry.findMany({
-      orderBy: { at: "desc" },
-      take: Math.min(Number(limit) || 50, 200),
-    });
-  });
 }

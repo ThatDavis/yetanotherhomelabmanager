@@ -41,6 +41,20 @@ export type SyncResult = {
   results: { node: string; ok: boolean; output: string }[];
 };
 
+export type AuditEntry = {
+  id: string;
+  at: string;
+  actor: string;
+  action: string;
+  target: string;
+  params: string;
+  ok: boolean;
+  output: string;
+  durationMs: number;
+};
+
+export type AuditPage = { entries: AuditEntry[]; nextBefore: string | null };
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     // Fastify 400s on content-type: application/json with an empty body

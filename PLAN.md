@@ -61,3 +61,4 @@
 - **PVE/PBS node registration + connection test** (Milestone 1, 2026-09-30) — encrypted API tokens, TOFU fingerprint pinning, node.test probe (issue #4)
 - **Inventory sync** (Milestone 1, 2026-09-30) — guest persistence, storage/jobs summaries, per-node isolation; verified against real PVE+PBS (issue #6)
 - **Passkey authentication** (Milestone 1, 2026-09-30) — WebAuthn ceremonies, DB sessions, first-run registration, themed login, Settings passkey management (issue #8)
+- **Audit log viewer** (Milestone 1, 2026-09-30) — filterable/paginated audit read, expandable entries, auth.logout coverage (issue #10)
