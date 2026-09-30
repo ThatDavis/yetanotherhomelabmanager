@@ -34,6 +34,19 @@ model AuditEntry {
   @@index([at])
 }
 
+// A Proxmox node: PVE hypervisor or PBS backup server.
+// API token secret lives in the Secret table under "node-token-<id>".
+model Node {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  type           String // "pve" | "pbs"
+  url            String // e.g. https://pve1.lab:8006
+  tokenId        String // user@realm!tokenname
+  tlsFingerprint String   @default("") // TOFU-pinned on first successful connection
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 // Encrypted-at-rest secrets (AES-GCM via MASTER_KEY). id is a well-known name,
 // e.g. "master-ssh-private-key".
 model Secret {

@@ -22,6 +22,6 @@ test("dashboard lands at / with empty-state CTA", () => {
 });
 
 test("section routes render their pages", () => {
-  expect(renderAt("/nodes")).toContain("PVE/PBS node registration");
+  expect(renderAt("/nodes")).toContain("No nodes registered yet");
   expect(renderAt("/audit")).toContain("Audit Log");
 });

@@ -17,6 +17,15 @@ export type ProbeResult = {
   data?: { lines: OutputLine[]; exitCode: number | null };
 };
 
+export type Node = {
+  id: string;
+  name: string;
+  type: "pve" | "pbs";
+  url: string;
+  tokenId: string;
+  tlsFingerprint: string;
+};
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     // Fastify 400s on content-type: application/json with an empty body
