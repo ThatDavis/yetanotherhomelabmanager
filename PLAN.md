@@ -52,14 +52,7 @@
 
 ## Active Feature
 
-**Secrets management** — branch `feature/12-secrets-management` (Milestone 1, issue #12)
-
-Sub-tasks:
-- [x] crypto: explicit-key support
-- [x] secrets module: list, guarded delete, rotateMasterKey (oldKey param)
-- [x] API: list, rotate-key, guarded delete (audited)
-- [x] Settings SECRETS panel (typed-confirm rotation)
-- [x] Tests + rotation mutex + serial test pool
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
@@ -69,3 +62,4 @@ Sub-tasks:
 - **Inventory sync** (Milestone 1, 2026-09-30) — guest persistence, storage/jobs summaries, per-node isolation; verified against real PVE+PBS (issue #6)
 - **Passkey authentication** (Milestone 1, 2026-09-30) — WebAuthn ceremonies, DB sessions, first-run registration, themed login, Settings passkey management (issue #8)
 - **Audit log viewer** (Milestone 1, 2026-09-30) — filterable/paginated audit read, expandable entries, auth.logout coverage (issue #10)
+- **Secrets management** (Milestone 1, 2026-09-30) — metadata list, guarded delete, master key rotation, container deploy verified (issue #12)
