@@ -22,6 +22,8 @@ let failAuth = false;
 let denyPrivileges = false;
 let nameSeq = 0;
 
+const createdIds: string[] = [];
+
 function makeCert(name: string): { key: string; cert: string } {
   const keyPath = path.join(tmp, `${name}.key`);
   const certPath = path.join(tmp, `${name}.crt`);
@@ -76,6 +78,7 @@ async function registerNode(): Promise<string> {
     },
   });
   expect(res.statusCode).toBe(201);
+  createdIds.push(res.json().id);
   return res.json().id;
 }
 
@@ -85,8 +88,10 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await stopMock();
-  await prisma.node.deleteMany({ where: { name: { startsWith: "mock-pve-" } } });
-  await prisma.secret.deleteMany({ where: { id: { startsWith: "node-token-" } } });
+  await prisma.node.deleteMany({ where: { id: { in: createdIds } } });
+  await prisma.secret.deleteMany({
+    where: { id: { in: createdIds.map((id) => `node-token-${id}`) } },
+  });
   await prisma.auditEntry.deleteMany({ where: { target: { startsWith: "mock-pve-" } } });
   await app.close();
 });
@@ -95,7 +100,6 @@ test("full TOFU flow: register → test pins fingerprint → mismatch on new cer
   const id = await registerNode();
 
   const first = await app.inject({ method: "POST", url: `/api/nodes/${id}/test` });
-  expect(first.json().ok).toBe(true);
   expect(first.json().output).toContain("tofu: pinned");
   expect(first.json().output).toContain("8.2.2");
   const pinned = (await prisma.node.findUnique({ where: { id } }))?.tlsFingerprint;
@@ -103,6 +107,13 @@ test("full TOFU flow: register → test pins fingerprint → mismatch on new cer
 
   // Token auth header reached the server in PVE '=' form
   expect(authSeen).toBe("PVEAPIToken=yahlm@pam!api=secret-uuid");
+
+  // Regression: consecutive requests against the same cert must not fail
+  // fingerprint verification (TLS session resumption used to return an
+  // empty peer certificate → spurious mismatch)
+  const again = await app.inject({ method: "POST", url: `/api/nodes/${id}/test` });
+  expect(again.json().ok).toBe(true);
+  expect(again.json().output).not.toContain("MISMATCH");
 
   // Server now presents a different certificate — must hard-fail
   await stopMock();

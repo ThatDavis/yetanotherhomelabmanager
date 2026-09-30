@@ -45,6 +45,10 @@ beforeAll(async () => {
       res.writeHead(200).end(JSON.stringify({ data: [{ storage: "local" }, { storage: "nfs" }] }));
       return;
     }
+    if (url.pathname === "/api2/json/version") {
+      res.writeHead(200).end(JSON.stringify({ data: { version: "8.2.2" } }));
+      return;
+    }
     if (url.pathname === "/api2/json/cluster/backup") {
       res
         .writeHead(200)
@@ -74,13 +78,17 @@ beforeAll(async () => {
   await promise;
 });
 
+const createdIds: string[] = [];
+
 afterAll(async () => {
   const { promise, resolve } = Promise.withResolvers<void>();
   mock.close(() => resolve());
   await promise;
-  await prisma.guest.deleteMany({});
-  await prisma.node.deleteMany({ where: { name: { startsWith: "inv-" } } });
-  await prisma.secret.deleteMany({ where: { id: { startsWith: "node-token-" } } });
+  await prisma.guest.deleteMany({ where: { nodeDbId: { in: createdIds } } });
+  await prisma.node.deleteMany({ where: { id: { in: createdIds } } });
+  await prisma.secret.deleteMany({
+    where: { id: { in: createdIds.map((id) => `node-token-${id}`) } },
+  });
   await prisma.auditEntry.deleteMany({ where: { target: { startsWith: "inv-" } } });
   await app.close();
 });
@@ -98,6 +106,7 @@ async function register(name: string, type: "pve" | "pbs", port: number): Promis
     },
   });
   expect(res.statusCode).toBe(201);
+  createdIds.push(res.json().id);
   return res.json().id;
 }
 

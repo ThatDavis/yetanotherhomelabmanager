@@ -39,6 +39,9 @@ export async function pveRequest(
       method: "GET",
       headers: { authorization: authHeader(node, secret) },
       rejectUnauthorized: false, // TOFU pinning replaces CA verification
+      // No session cache: a resumed TLS session skips the server certificate,
+      // leaving getPeerCertificate() empty and breaking fingerprint verification.
+      agent: new https.Agent({ keepAlive: false, maxCachedSessions: 0 }),
       timeout: timeoutMs,
     },
     (res) => {

@@ -59,6 +59,37 @@ export function healthCheck(host: Host): Promise<StepResult> {
 // node.test — connection + privilege probe against a PVE/PBS node.
 // First successful connection TOFU-pins the certificate fingerprint; later
 // mismatches hard-fail (2026-09-30 decision).
+
+/** Verify a response's peer fingerprint against the node's TOFU pin. Returns an error message or null. */
+function fingerprintError(node: Node, fingerprint: string): string | null {
+  if (!fingerprint) return "could not read peer certificate — cannot verify server identity";
+  if (node.tlsFingerprint && fingerprint !== node.tlsFingerprint) {
+    return `TLS FINGERPRINT MISMATCH — pinned ${node.tlsFingerprint}, peer ${fingerprint}`;
+  }
+  return null;
+}
+
+/** Pin the node's certificate fingerprint if not already pinned (TOFU). */
+async function pinIfNeeded(
+  node: Node,
+  secret: string,
+): Promise<{ node: Node; pinnedNow: boolean } | { error: string }> {
+  if (node.tlsFingerprint) return { node, pinnedNow: false };
+  let version: PveResponse;
+  try {
+    version = await pveRequest(node, secret, "/api2/json/version");
+  } catch (err) {
+    return { error: `connection failed: ${(err as Error).message}` };
+  }
+  if (!version.fingerprint) {
+    return { error: "could not read peer certificate — cannot verify server identity" };
+  }
+  await prisma.node.update({
+    where: { id: node.id },
+    data: { tlsFingerprint: version.fingerprint },
+  });
+  return { node: { ...node, tlsFingerprint: version.fingerprint }, pinnedNow: true };
+}
 export function nodeTest(node: Node): Promise<StepResult> {
   return runStep("node.test", node.name, { type: node.type }, async () => {
     const lines: string[] = [];
@@ -71,6 +102,13 @@ export function nodeTest(node: Node): Promise<StepResult> {
       version = await pveRequest(node, secret, "/api2/json/version");
     } catch (err) {
       return { ok: false, output: `connection failed: ${(err as Error).message}` };
+    }
+
+    if (!version.fingerprint) {
+      return {
+        ok: false,
+        output: "could not read peer certificate — cannot verify server identity",
+      };
     }
 
     if (!node.tlsFingerprint) {
@@ -168,6 +206,8 @@ async function syncPve(node: Node, secret: string): Promise<Omit<StepResult, "du
   const lines: string[] = [];
 
   const vmRes = await pveRequest(node, secret, "/api2/json/cluster/resources?type=vm");
+  const vmFpErr = fingerprintError(node, vmRes.fingerprint);
+  if (vmFpErr) return { ok: false, output: vmFpErr };
   if (vmRes.status === 401) return { ok: false, output: "authentication failed (401)" };
   if (vmRes.status === 403) {
     return {
@@ -204,6 +244,8 @@ async function syncPve(node: Node, secret: string): Promise<Omit<StepResult, "du
   if (pruned.count > 0) lines.push(`pruned ${pruned.count} stale guest rows`);
 
   const jobsRes = await pveRequest(node, secret, "/api2/json/cluster/backup");
+  const jobsFpErr = fingerprintError(node, jobsRes.fingerprint);
+  if (jobsFpErr) return { ok: false, output: jobsFpErr };
   if (jobsRes.status === 200) {
     const jobs = pveData(jobsRes.data);
     const enabled = Array.isArray(jobs)
@@ -215,6 +257,8 @@ async function syncPve(node: Node, secret: string): Promise<Omit<StepResult, "du
   }
 
   const storageRes = await pveRequest(node, secret, "/api2/json/cluster/resources?type=storage");
+  const storageFpErr = fingerprintError(node, storageRes.fingerprint);
+  if (storageFpErr) return { ok: false, output: storageFpErr };
   if (storageRes.status === 200) {
     lines.push(`${countArray(pveData(storageRes.data))} storage pools`);
   } else {
@@ -232,6 +276,8 @@ async function syncPbs(node: Node, secret: string): Promise<Omit<StepResult, "du
   const lines: string[] = [];
 
   const dsRes = await pveRequest(node, secret, "/api2/json/admin/datastore");
+  const dsFpErr = fingerprintError(node, dsRes.fingerprint);
+  if (dsFpErr) return { ok: false, output: dsFpErr };
   if (dsRes.status === 401) return { ok: false, output: "authentication failed (401)" };
   if (dsRes.status === 403) {
     return {
@@ -255,6 +301,8 @@ async function syncPbs(node: Node, secret: string): Promise<Omit<StepResult, "du
   const summaries: { store: string; snapshots: number; latestBackup: number | null }[] = [];
   for (const store of stores) {
     const snapRes = await pveRequest(node, secret, `/api2/json/admin/datastore/${store}/snapshots`);
+    const snapFpErr = fingerprintError(node, snapRes.fingerprint);
+    if (snapFpErr) return { ok: false, output: snapFpErr };
     if (snapRes.status !== 200) {
       lines.push(`${store}: snapshot listing failed (HTTP ${snapRes.status})`);
       continue;
@@ -277,6 +325,9 @@ export function nodeSync(node: Node): Promise<StepResult> {
   return runStep("node.sync", node.name, { type: node.type }, async () => {
     const secret = await loadSecret(`node-token-${node.id}`);
     if (!secret) return { ok: false, output: "no API token secret stored for this node" };
+    const pinned = await pinIfNeeded(node, secret);
+    if ("error" in pinned) return { ok: false, output: pinned.error };
+    node = pinned.node;
     try {
       return node.type === "pbs" ? await syncPbs(node, secret) : await syncPve(node, secret);
     } catch (err) {
