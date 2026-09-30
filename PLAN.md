@@ -7,16 +7,16 @@
 ## Milestone 1: Foundation
 
 **Goal:** Deployable web app where the operator logs in with a passkey, registers PVE/PBS nodes and guest hosts (API tokens + master SSH keypair stored encrypted), views the resulting inventory, and has every action recorded in an audit log — running via Docker Compose.
-**Status:** In Progress
+**Status:** Complete (2026-09-30)
 
 ### Features
-- [ ] Feature: Passkey (WebAuthn) registration + login/logout for the single operator
-- [ ] Feature: Audit log — every mutating action and external call (PVE/PBS API, SSH) recorded with actor, action, target, timestamp, result; viewable in UI
-- [ ] Feature: Encrypted secrets store — AES-GCM with env-supplied MASTER_KEY; app refuses to start without it; API tokens + SSH private key encrypted at rest
-- [ ] Feature: PVE/PBS node registration with API tokens + per-node "test connection" (verifies token privileges)
-- [ ] Feature: Inventory sync — VMs, LXCs, storage from PVE; backup jobs from PBS
-- [ ] Feature: Guest host registration — master SSH keypair generation + bootstrap script; SSH executor runs commands and returns output
-- [ ] Feature: App shell served behind existing reverse proxy (RP_ID/ORIGIN env-configured)
+- [x] Feature: Passkey (WebAuthn) registration + login/logout for the single operator
+- [x] Feature: Audit log — every mutating action and external call (PVE/PBS API, SSH) recorded with actor, action, target, timestamp, result; viewable in UI
+- [x] Feature: Encrypted secrets store — AES-GCM with env-supplied MASTER_KEY; app refuses to start without it; API tokens + SSH private key encrypted at rest
+- [x] Feature: PVE/PBS node registration with API tokens + per-node "test connection" (verifies token privileges)
+- [x] Feature: Inventory sync — VMs, LXCs, storage from PVE; backup jobs from PBS
+- [x] Feature: Guest host registration — master SSH keypair generation + bootstrap script; SSH executor runs commands and returns output
+- [x] Feature: App shell served behind existing reverse proxy (RP_ID/ORIGIN env-configured)
 
 ---
 
