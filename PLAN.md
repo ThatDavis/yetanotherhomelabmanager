@@ -52,17 +52,9 @@
 
 ## Active Feature
 
-**Guest host registration + SSH executor** — branch `feature/2-guest-host-ssh-executor` (Milestone 1, issue #2)
-
-Sub-tasks:
-- [x] Prisma Host + AuditEntry + Secret models, initial migration
-- [x] crypto module (AES-GCM) + minimal secrets store
-- [x] Master keypair generation + bootstrap script
-- [x] SSH executor + step contract + health.check probe
-- [x] API: hosts CRUD + probe + bootstrap + audit read
-- [x] Guests page UI (table, register drawer, bootstrap viewer, probe terminal)
-- [x] Tests + end-to-end verification (podman sshd target)
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
 - **App shell** (Milestone 1, 2026-09-29) — Catppuccin Mocha themed sidebar shell, react-router, dashboard, production SPA serving
+- **Guest host registration + SSH executor** (Milestone 1, 2026-09-30) — master keypair + bootstrap, step contract with mandatory audit, health.check probe, Guests UI (issue #2)
