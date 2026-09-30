@@ -6,7 +6,7 @@ import { StatusBadge } from "../components/StatusBadge";
 
 type DrawerState =
   | { kind: "add" }
-  | { kind: "test"; node: Node; result: ProbeResult | null; error: string | null }
+  | { kind: "test" | "sync"; node: Node; result: ProbeResult | null; error: string | null }
   | null;
 
 const inputCls =
@@ -33,6 +33,16 @@ export function Nodes() {
       refresh(); // fingerprint may have been pinned
     } catch (err) {
       setDrawer({ kind: "test", node, result: null, error: (err as Error).message });
+    }
+  };
+
+  const sync = async (node: Node) => {
+    setDrawer({ kind: "sync", node, result: null, error: null });
+    try {
+      const result = await api<ProbeResult>(`/nodes/${node.id}/sync`, { method: "POST" });
+      setDrawer({ kind: "sync", node, result, error: null });
+    } catch (err) {
+      setDrawer({ kind: "sync", node, result: null, error: (err as Error).message });
     }
   };
 
@@ -103,6 +113,13 @@ export function Nodes() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => sync(n)}
+                      className="text-teal hover:text-text"
+                    >
+                      SYNC
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => unpin(n)}
                       className="text-subtext0 hover:text-text"
                     >
@@ -133,14 +150,14 @@ export function Nodes() {
       />
 
       <Drawer
-        title={`NODE.TEST // ${drawer?.kind === "test" ? drawer.node.name : ""}`}
-        open={drawer?.kind === "test"}
+        title={`${drawer?.kind === "sync" ? "NODE.SYNC" : "NODE.TEST"} // ${drawer && drawer.kind !== "add" ? drawer.node.name : ""}`}
+        open={drawer?.kind === "test" || drawer?.kind === "sync"}
         onClose={() => setDrawer(null)}
       >
-        {drawer?.kind === "test" && (
+        {drawer && drawer.kind !== "add" && (
           <>
             {!drawer.result && !drawer.error && (
-              <p className="font-mono text-sm text-status-running">Testing connection…</p>
+              <p className="font-mono text-sm text-status-running">Running…</p>
             )}
             {drawer.error && <p className="font-mono text-sm text-status-error">{drawer.error}</p>}
             {drawer.result && (

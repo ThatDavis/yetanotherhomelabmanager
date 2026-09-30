@@ -1,7 +1,9 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { api, type Host, type ProbeResult } from "../api";
 import { Drawer } from "../components/Drawer";
+import { GuestInventory } from "../components/GuestInventory";
 import { PageHeader } from "../components/PageHeader";
+import { Panel } from "../components/Panel";
 import { StatusBadge } from "../components/StatusBadge";
 import { Terminal } from "../components/Terminal";
 
@@ -61,62 +63,68 @@ export function Guests() {
         </button>
       </div>
 
-      {error && <p className="font-mono text-sm text-status-error">API error: {error}</p>}
+      <GuestInventory />
 
-      {!error && hosts.length === 0 && (
-        <p className="py-8 text-center font-mono text-sm text-subtext0">
-          No hosts registered yet. Add your first host, then run its bootstrap script.
-        </p>
-      )}
+      <div className="mt-6">
+        <Panel label="SSH HOSTS">
+          {error && <p className="font-mono text-sm text-status-error">API error: {error}</p>}
 
-      {hosts.length > 0 && (
-        <table className="w-full border-collapse font-mono text-sm">
-          <thead>
-            <tr className="micro-label border-b border-surface1 text-left">
-              <th className="py-2 pr-4 font-normal">ALIAS</th>
-              <th className="py-2 pr-4 font-normal">ADDRESS</th>
-              <th className="py-2 pr-4 font-normal">NOTES</th>
-              <th className="py-2 font-normal">ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hosts.map((h) => (
-              <tr key={h.id} className="border-b border-surface0 text-subtext1">
-                <td className="py-2 pr-4 text-text">{h.alias}</td>
-                <td className="py-2 pr-4">
-                  {h.username}@{h.hostname}:{h.port}
-                </td>
-                <td className="py-2 pr-4">{h.notes}</td>
-                <td className="py-2">
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => probe(h)}
-                      className="text-sapphire hover:text-text"
-                    >
-                      PROBE
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => showBootstrap(h)}
-                      className="text-subtext0 hover:text-text"
-                    >
-                      BOOTSTRAP
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeHost(h)}
-                      className="text-status-error/70 hover:text-status-error"
-                    >
-                      REMOVE
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+          {!error && hosts.length === 0 && (
+            <p className="py-4 text-center font-mono text-sm text-subtext0">
+              No hosts registered yet. Add your first host, then run its bootstrap script.
+            </p>
+          )}
+
+          {hosts.length > 0 && (
+            <table className="w-full border-collapse font-mono text-sm">
+              <thead>
+                <tr className="micro-label border-b border-surface1 text-left">
+                  <th className="py-2 pr-4 font-normal">ALIAS</th>
+                  <th className="py-2 pr-4 font-normal">ADDRESS</th>
+                  <th className="py-2 pr-4 font-normal">NOTES</th>
+                  <th className="py-2 font-normal">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {hosts.map((h) => (
+                  <tr key={h.id} className="border-b border-surface0 text-subtext1">
+                    <td className="py-2 pr-4 text-text">{h.alias}</td>
+                    <td className="py-2 pr-4">
+                      {h.username}@{h.hostname}:{h.port}
+                    </td>
+                    <td className="py-2 pr-4">{h.notes}</td>
+                    <td className="py-2">
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => probe(h)}
+                          className="text-sapphire hover:text-text"
+                        >
+                          PROBE
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => showBootstrap(h)}
+                          className="text-subtext0 hover:text-text"
+                        >
+                          BOOTSTRAP
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeHost(h)}
+                          className="text-status-error/70 hover:text-status-error"
+                        >
+                          REMOVE
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </div>
 
       <AddHostDrawer
         open={drawer?.kind === "add"}

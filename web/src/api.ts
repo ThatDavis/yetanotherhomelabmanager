@@ -26,6 +26,21 @@ export type Node = {
   tlsFingerprint: string;
 };
 
+export type Guest = {
+  id: string;
+  vmid: number;
+  type: string;
+  name: string;
+  status: string;
+  pveNode: string;
+  nodeName: string;
+};
+
+export type SyncResult = {
+  ok: boolean;
+  results: { node: string; ok: boolean; output: string }[];
+};
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     // Fastify 400s on content-type: application/json with an empty body

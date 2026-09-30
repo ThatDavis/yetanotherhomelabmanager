@@ -3,7 +3,7 @@ import { z } from "zod";
 import { audit } from "../audit.js";
 import { prisma } from "../db.js";
 import { storeSecret } from "../secrets.js";
-import { nodeTest } from "../steps.js";
+import { nodeSync, nodeTest } from "../steps.js";
 
 const createNodeSchema = z.object({
   name: z
@@ -118,5 +118,31 @@ export function nodeRoutes(app: FastifyInstance) {
     const node = await prisma.node.findUnique({ where: { id } });
     if (!node) return reply.code(404).send({ error: "node not found" });
     return nodeTest(node);
+  });
+
+  app.post("/api/nodes/:id/sync", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const node = await prisma.node.findUnique({ where: { id } });
+    if (!node) return reply.code(404).send({ error: "node not found" });
+    return nodeSync(node);
+  });
+
+  // Sync all nodes; per-node failure isolation — one bad node can't blank the rest.
+  app.post("/api/sync", async () => {
+    const nodes = await prisma.node.findMany({ orderBy: { name: "asc" } });
+    const results = [];
+    for (const node of nodes) {
+      const res = await nodeSync(node); // audited individually as node.sync
+      results.push({ node: node.name, ok: res.ok, output: res.output });
+    }
+    return { ok: results.every((r) => r.ok), results };
+  });
+
+  app.get("/api/guests", async () => {
+    const guests = await prisma.guest.findMany({ orderBy: [{ nodeDbId: "asc" }, { vmid: "asc" }] });
+    const nodes = await prisma.node.findMany({ select: { id: true, name: true } });
+    const nameById: Record<string, string> = {};
+    for (const n of nodes) nameById[n.id] = n.name;
+    return guests.map((g) => ({ ...g, nodeName: nameById[g.nodeDbId] ?? "?" }));
   });
 }

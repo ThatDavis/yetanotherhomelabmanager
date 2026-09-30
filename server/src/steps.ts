@@ -120,3 +120,167 @@ export function nodeTest(node: Node): Promise<StepResult> {
     return { ok: false, output: lines.join("\n") };
   });
 }
+
+// --- Inventory sync (node.sync) ---
+
+type PveGuest = { vmid: number; name: string; status: string; type: string; node: string };
+
+function parseGuests(data: unknown): PveGuest[] {
+  if (!Array.isArray(data)) return [];
+  const guests: PveGuest[] = [];
+  for (const r of data) {
+    if (
+      r &&
+      typeof r === "object" &&
+      "vmid" in r &&
+      typeof r.vmid === "number" &&
+      "name" in r &&
+      typeof r.name === "string" &&
+      "status" in r &&
+      typeof r.status === "string" &&
+      "type" in r &&
+      typeof r.type === "string" &&
+      "node" in r &&
+      typeof r.node === "string"
+    ) {
+      guests.push({ vmid: r.vmid, name: r.name, status: r.status, type: r.type, node: r.node });
+    }
+  }
+  return guests;
+}
+
+function countArray(data: unknown): number {
+  return Array.isArray(data) ? data.length : 0;
+}
+
+function latestBackupTime(data: unknown): number | null {
+  if (!Array.isArray(data)) return null;
+  let latest: number | null = null;
+  for (const r of data) {
+    if (r && typeof r === "object" && "backup-time" in r && typeof r["backup-time"] === "number") {
+      if (latest === null || r["backup-time"] > latest) latest = r["backup-time"];
+    }
+  }
+  return latest;
+}
+
+async function syncPve(node: Node, secret: string): Promise<Omit<StepResult, "durationMs">> {
+  const lines: string[] = [];
+
+  const vmRes = await pveRequest(node, secret, "/api2/json/cluster/resources?type=vm");
+  if (vmRes.status === 401) return { ok: false, output: "authentication failed (401)" };
+  if (vmRes.status === 403) {
+    return {
+      ok: false,
+      output: "INSUFFICIENT PRIVILEGES (403) listing guests — hint: grant PVEAuditor on /",
+    };
+  }
+  if (vmRes.status !== 200)
+    return { ok: false, output: `guest listing failed: HTTP ${vmRes.status}` };
+
+  const guests = parseGuests(pveData(vmRes.data));
+
+  // Upsert current guests; prune rows this node no longer reports.
+  for (const g of guests) {
+    await prisma.guest.upsert({
+      where: { nodeDbId_vmid: { nodeDbId: node.id, vmid: g.vmid } },
+      update: { pveNode: g.node, type: g.type, name: g.name, status: g.status },
+      create: {
+        nodeDbId: node.id,
+        pveNode: g.node,
+        vmid: g.vmid,
+        type: g.type,
+        name: g.name,
+        status: g.status,
+      },
+    });
+  }
+  const pruned = await prisma.guest.deleteMany({
+    where: { nodeDbId: node.id, vmid: { notIn: guests.map((g) => g.vmid) } },
+  });
+
+  const running = guests.filter((g) => g.status === "running").length;
+  lines.push(`synced ${guests.length} guests (${running} running)`);
+  if (pruned.count > 0) lines.push(`pruned ${pruned.count} stale guest rows`);
+
+  const jobsRes = await pveRequest(node, secret, "/api2/json/cluster/backup");
+  if (jobsRes.status === 200) {
+    const jobs = pveData(jobsRes.data);
+    const enabled = Array.isArray(jobs)
+      ? jobs.filter((j) => j && typeof j === "object" && "enabled" in j && j.enabled === 1).length
+      : 0;
+    lines.push(`${countArray(jobs)} backup jobs (${enabled} enabled)`);
+  } else {
+    lines.push(`backup job listing failed: HTTP ${jobsRes.status}`);
+  }
+
+  const storageRes = await pveRequest(node, secret, "/api2/json/cluster/resources?type=storage");
+  if (storageRes.status === 200) {
+    lines.push(`${countArray(pveData(storageRes.data))} storage pools`);
+  } else {
+    lines.push(`storage listing failed: HTTP ${storageRes.status}`);
+  }
+
+  return {
+    ok: true,
+    output: lines.join("\n"),
+    data: { guests: guests.length, running, pruned: pruned.count },
+  };
+}
+
+async function syncPbs(node: Node, secret: string): Promise<Omit<StepResult, "durationMs">> {
+  const lines: string[] = [];
+
+  const dsRes = await pveRequest(node, secret, "/api2/json/admin/datastore");
+  if (dsRes.status === 401) return { ok: false, output: "authentication failed (401)" };
+  if (dsRes.status === 403) {
+    return {
+      ok: false,
+      output: "INSUFFICIENT PRIVILEGES (403) listing datastores — hint: grant Datastore.Audit on /",
+    };
+  }
+  if (dsRes.status !== 200)
+    return { ok: false, output: `datastore listing failed: HTTP ${dsRes.status}` };
+
+  const stores: string[] = [];
+  const raw = pveData(dsRes.data);
+  if (Array.isArray(raw)) {
+    for (const r of raw) {
+      if (r && typeof r === "object" && "store" in r && typeof r.store === "string") {
+        stores.push(r.store);
+      }
+    }
+  }
+
+  const summaries: { store: string; snapshots: number; latestBackup: number | null }[] = [];
+  for (const store of stores) {
+    const snapRes = await pveRequest(node, secret, `/api2/json/admin/datastore/${store}/snapshots`);
+    if (snapRes.status !== 200) {
+      lines.push(`${store}: snapshot listing failed (HTTP ${snapRes.status})`);
+      continue;
+    }
+    const snaps = pveData(snapRes.data);
+    const summary = { store, snapshots: countArray(snaps), latestBackup: latestBackupTime(snaps) };
+    summaries.push(summary);
+    const latest = summary.latestBackup
+      ? new Date(summary.latestBackup * 1000).toISOString()
+      : "never";
+    lines.push(`${store}: ${summary.snapshots} snapshots, latest ${latest}`);
+  }
+
+  return { ok: true, output: lines.join("\n") || "no datastores", data: { datastores: summaries } };
+}
+
+// node.sync — pull inventory from a PVE/PBS node. PVE guests are persisted
+// (upsert + prune); PBS datastore summaries are returned live.
+export function nodeSync(node: Node): Promise<StepResult> {
+  return runStep("node.sync", node.name, { type: node.type }, async () => {
+    const secret = await loadSecret(`node-token-${node.id}`);
+    if (!secret) return { ok: false, output: "no API token secret stored for this node" };
+    try {
+      return node.type === "pbs" ? await syncPbs(node, secret) : await syncPve(node, secret);
+    } catch (err) {
+      return { ok: false, output: `connection failed: ${(err as Error).message}` };
+    }
+  });
+}
