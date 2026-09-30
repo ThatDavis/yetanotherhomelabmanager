@@ -11,7 +11,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - [ ] Passkey (WebAuthn) auth for single operator
 - [ ] Audit log (append-only; all mutations + external calls; UI viewer)
 - [ ] Encrypted secrets store (AES-GCM, env MASTER_KEY, fail-loud without it)
-- [x] PVE/PBS node registration + per-node connection test
+- [x] Inventory sync (PVE guests/storage, PBS backup jobs)
 - [x] Guest host registration: master SSH keypair + bootstrap script; SSH executor
 - [x] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
 
@@ -71,13 +71,17 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ POST /api/sync + GET /api/guests + per-node sync |
 |  |    ✓ Guests page: PVE inventory panel + SYNC button |
 |  |    ✓ Nodes page: sync action + result drawer |
+
 |  |    ✓ Tests (two-node mock, per-node isolation, prune, PBS) |
+| 2026-09-30 | Completed feature: Inventory sync (PR #7). DoD all PASS; verified against real PVE+PBS (green TEST/SYNC, real guests listed). TLS session-resumption fingerprint bug found + fixed via live testing. |
 
 ## [DISCOVERIES]
 
 - 2026-09-28: Passkeys (WebAuthn) hard-require HTTPS + stable hostname — deployment must sit behind the operator's existing proxy/CA; RP_ID/ORIGIN env must match exactly (top M1 failure mode).
 - 2026-09-28: MASTER_KEY loss = unrecoverable secrets; backup documented in .env.example; app refuses to start in production without it.
 - 2026-09-28: Docker not available on the dev workstation — compose stack verified statically; runtime deploy verification must happen on the homelab.
+- 2026-09-30: Node TLS session resumption returns empty peer certificates — any fingerprint pinning must disable session caching (maxCachedSessions: 0).
+- 2026-09-30: PVE permissions: /api2/json/nodes works with minimal perms, but /cluster/resources needs the ACL on path "/" — and with Privilege Separation ON, the token needs its OWN ACL entry (user perms don't flow). PVEAuditor on / covers sync.
 
 ## [OUTCOMES]
 
@@ -88,4 +92,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - Host CRUD + master ed25519 keypair (encrypted at rest) + idempotent bootstrap script; SSH executor with combined tagged stream; step contract with mandatory audit (health.check probe); pulled forward minimal crypto + audit writer. Verified end-to-end on podman sshd; 19/19 tests.
 
 ### PVE/PBS node registration + connection test (2026-09-30)
-- Node CRUD with encrypted API tokens; Proxmox client with TOFU fingerprint pinning (pin/mismatch/unpin); node.test step with version + privilege probes; real-TLS mock test suite (24/24). Real Proxmox response shapes still unverified — first live test on homelab.
+- Node CRUD with encrypted API tokens; Proxmox client with TOFU fingerprint pinning (pin/mismatch/unpin); node.test step with version + privilege probes; real-TLS mock test suite. Verified against real Proxmox 2026-09-30.
+
+### Inventory sync (2026-09-30)
+- Guest persistence (upsert+prune), PVE storage/jobs summary, PBS datastore summaries; per-node failure isolation; node EDIT drawer; default-port-by-type. Verified green against real PVE + PBS. Two live-found bugs fixed: TLS session-resumption empty-cert mismatch, node.sync skipping TOFU verification.

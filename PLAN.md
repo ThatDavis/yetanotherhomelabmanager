@@ -52,18 +52,11 @@
 
 ## Active Feature
 
-**Inventory sync** — branch `feature/6-inventory-sync` (Milestone 1, issue #6)
-
-Sub-tasks:
-- [x] Prisma Guest model + migration
-- [x] node.sync step (PVE resources + jobs, PBS datastores)
-- [x] POST /api/sync + GET /api/guests + per-node sync
-- [x] Guests page: PVE inventory panel + SYNC button
-- [x] Nodes page: sync action + result drawer
-- [x] Tests (two-node mock, per-node isolation, prune, PBS)
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
 - **App shell** (Milestone 1, 2026-09-29) — Catppuccin Mocha themed sidebar shell, react-router, dashboard, production SPA serving
 - **Guest host registration + SSH executor** (Milestone 1, 2026-09-30) — master keypair + bootstrap, step contract with mandatory audit, health.check probe, Guests UI (issue #2)
 - **PVE/PBS node registration + connection test** (Milestone 1, 2026-09-30) — encrypted API tokens, TOFU fingerprint pinning, node.test probe (issue #4)
+- **Inventory sync** (Milestone 1, 2026-09-30) — guest persistence, storage/jobs summaries, per-node isolation; verified against real PVE+PBS (issue #6)
