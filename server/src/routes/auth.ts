@@ -4,6 +4,10 @@ import {
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
 } from "@simplewebauthn/server";
+import type {
+  VerifiedAuthenticationResponse,
+  VerifiedRegistrationResponse,
+} from "@simplewebauthn/server";
 import type { FastifyInstance } from "fastify";
 import { audit } from "../audit.js";
 import {
@@ -58,7 +62,7 @@ export function authRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: "registration requires an authenticated session" });
     }
 
-    let verification;
+    let verification: VerifiedRegistrationResponse;
     try {
       verification = await verifyRegistrationResponse({
         response: body.response,
@@ -130,7 +134,7 @@ export function authRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "unknown credential" });
     }
 
-    let verification;
+    let verification: VerifiedAuthenticationResponse;
     try {
       verification = await verifyAuthenticationResponse({
         response: body.response,
