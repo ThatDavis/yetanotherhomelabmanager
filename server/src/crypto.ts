@@ -5,17 +5,22 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 export type Encrypted = { ciphertext: string; iv: string; authTag: string };
 
-function masterKey(): Buffer {
-  const hex = process.env.MASTER_KEY;
-  if (!hex || !/^[0-9a-f]{64}$/i.test(hex)) {
-    throw new Error("MASTER_KEY must be 64 hex chars (openssl rand -hex 32)");
+function keyFromHex(hex: string): Buffer {
+  if (!/^[0-9a-f]{64}$/i.test(hex)) {
+    throw new Error("key must be 64 hex chars (openssl rand -hex 32)");
   }
   return Buffer.from(hex, "hex");
 }
 
-export function encrypt(plaintext: string): Encrypted {
+function masterKey(): Buffer {
+  const hex = process.env.MASTER_KEY;
+  if (!hex) throw new Error("MASTER_KEY must be 64 hex chars (openssl rand -hex 32)");
+  return keyFromHex(hex);
+}
+
+export function encrypt(plaintext: string, keyHex?: string): Encrypted {
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", masterKey(), iv);
+  const cipher = createCipheriv("aes-256-gcm", keyHex ? keyFromHex(keyHex) : masterKey(), iv);
   const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   return {
     ciphertext: ciphertext.toString("base64"),
@@ -24,8 +29,12 @@ export function encrypt(plaintext: string): Encrypted {
   };
 }
 
-export function decrypt({ ciphertext, iv, authTag }: Encrypted): string {
-  const decipher = createDecipheriv("aes-256-gcm", masterKey(), Buffer.from(iv, "base64"));
+export function decrypt({ ciphertext, iv, authTag }: Encrypted, keyHex?: string): string {
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    keyHex ? keyFromHex(keyHex) : masterKey(),
+    Buffer.from(iv, "base64"),
+  );
   decipher.setAuthTag(Buffer.from(authTag, "base64"));
   return Buffer.concat([
     decipher.update(Buffer.from(ciphertext, "base64")),

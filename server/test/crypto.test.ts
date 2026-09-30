@@ -1,10 +1,20 @@
 import "./env.js";
+import { randomBytes } from "node:crypto";
 import { expect, test } from "vitest";
 import { decrypt, encrypt } from "../src/crypto.js";
+
+// Note: never mutate process.env.MASTER_KEY in tests — vitest worker threads
+// share process.env with other test files running concurrently.
+
+const otherKey = randomBytes(32).toString("hex");
 
 test("encrypt/decrypt roundtrip", () => {
   const secret = "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----";
   expect(decrypt(encrypt(secret))).toBe(secret);
+});
+
+test("roundtrip with an explicit key", () => {
+  expect(decrypt(encrypt("value", otherKey), otherKey)).toBe("value");
 });
 
 test("different encryptions of the same value differ (random IV)", () => {
@@ -19,15 +29,9 @@ test("tampered ciphertext fails GCM auth", () => {
 
 test("decrypt with wrong key fails", () => {
   const enc = encrypt("sensitive");
-  const original = process.env.MASTER_KEY;
-  process.env.MASTER_KEY = "0".repeat(64);
-  expect(() => decrypt(enc)).toThrow();
-  process.env.MASTER_KEY = original;
+  expect(() => decrypt(enc, otherKey)).toThrow();
 });
 
-test("missing/malformed MASTER_KEY throws a clear error", () => {
-  const original = process.env.MASTER_KEY;
-  process.env.MASTER_KEY = "short";
-  expect(() => encrypt("x")).toThrow(/MASTER_KEY must be 64 hex chars/);
-  process.env.MASTER_KEY = original;
+test("malformed key throws a clear error", () => {
+  expect(() => encrypt("x", "short")).toThrow(/64 hex chars/);
 });
