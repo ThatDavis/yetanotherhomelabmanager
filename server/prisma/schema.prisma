@@ -7,9 +7,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// M1 models: users/passkeys, nodes, hosts, secrets, audit log.
-// Defined when the corresponding features land via /dev:start-feature.
-model Healthcheck {
-  id        Int      @id @default(autoincrement())
-  checkedAt DateTime @default(now())
+// A managed machine reachable over SSH (physical, VM, or LXC).
+model Host {
+  id        String   @id @default(cuid())
+  alias     String   @unique
+  hostname  String
+  port      Int      @default(22)
+  username  String
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Append-only audit trail. One row per step execution or mutating API action.
+model AuditEntry {
+  id         String   @id @default(cuid())
+  at         DateTime @default(now())
+  actor      String // "operator" until multi-user exists
+  action     String // dotted step name, e.g. host.register, health.check
+  target     String   @default("")
+  params     String   @default("{}") // JSON, secrets redacted
+  ok         Boolean
+  output     String   @default("")
+  durationMs Int      @default(0)
+
+  @@index([at])
+}
+
+// Encrypted-at-rest secrets (AES-GCM via MASTER_KEY). id is a well-known name,
+// e.g. "master-ssh-private-key".
+model Secret {
+  id         String   @id
+  ciphertext String
+  iv         String
+  authTag    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
