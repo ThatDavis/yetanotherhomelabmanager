@@ -1,12 +1,12 @@
+import type {
+  VerifiedAuthenticationResponse,
+  VerifiedRegistrationResponse,
+} from "@simplewebauthn/server";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
-} from "@simplewebauthn/server";
-import type {
-  VerifiedAuthenticationResponse,
-  VerifiedRegistrationResponse,
 } from "@simplewebauthn/server";
 import type { FastifyInstance } from "fastify";
 import { audit } from "../audit.js";
