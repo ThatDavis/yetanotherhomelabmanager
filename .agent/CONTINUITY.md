@@ -89,6 +89,12 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Tests (filters, pagination) |
 |  |    ✓ Browser verification with real data |
 | 2026-09-30 | Completed feature: Audit log viewer (PR #11). DoD all PASS; browser-verified with real data. |
+| 2026-09-30 | Started feature: Secrets management (Issue #12) on branch feature/12-secrets-management. |
+|  |    ✓ crypto: explicit-key support |
+|  |    ✓ secrets module: list, guarded delete, rotateMasterKey (oldKey param) |
+|  |    ✓ API: list, rotate-key, guarded delete (audited) |
+|  |    ✓ Settings SECRETS panel (typed-confirm rotation) |
+|  |    ✓ Tests + rotation mutex + serial test pool |
 
 ## [DISCOVERIES]
 
@@ -98,6 +104,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - 2026-09-30: Node TLS session resumption returns empty peer certificates — any fingerprint pinning must disable session caching (maxCachedSessions: 0).
 - 2026-09-30: PVE permissions: /api2/json/nodes works with minimal perms, but /cluster/resources needs the ACL on path "/" — and with Privilege Separation ON, the token needs its OWN ACL entry (user perms don't flow). PVEAuditor on / covers sync.
 - 2026-09-30: Virtual authenticators (CDP) don't persist credentials across browser tabs — WebAuthn e2e must run register+login in one tab session. Test DB cleanup must be scoped to test-created rows once real operator data exists.
+- 2026-09-30: rotateMasterKey originally decrypted only with the current env key — rotating BACK was impossible; combined with prefix-based test cleanup and parallel vitest workers on one dev DB, this stranded real secrets repeatedly. Fixed with oldKeyHex param + mutex + singleFork pool + scoped cleanup. Never export MASTER_KEY into the interactive shell (test env.ts prefers inherited vars).
 
 ## [OUTCOMES]
 

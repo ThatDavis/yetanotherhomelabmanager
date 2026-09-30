@@ -52,7 +52,14 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**Secrets management** — branch `feature/12-secrets-management` (Milestone 1, issue #12)
+
+Sub-tasks:
+- [x] crypto: explicit-key support
+- [x] secrets module: list, guarded delete, rotateMasterKey (oldKey param)
+- [x] API: list, rotate-key, guarded delete (audited)
+- [x] Settings SECRETS panel (typed-confirm rotation)
+- [x] Tests + rotation mutex + serial test pool
 
 ## Completed Features
 
