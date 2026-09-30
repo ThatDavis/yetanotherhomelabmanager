@@ -38,20 +38,30 @@ export async function deleteSecret(id: string): Promise<string | null> {
   await prisma.secret.deleteMany({ where: { id } });
   return null;
 }
+
+// Serialize rotations: a concurrent rotation would decrypt rows mid-swap with
+// the wrong key. (Cross-process writers can still race; rotation is an
+// operator-triggered, rare operation — acceptable for single-operator scope.)
+let rotationQueue: Promise<unknown> = Promise.resolve();
+
 /**
  * Re-encrypt every secret under a new master key. Rows are expected to be
  * under the env MASTER_KEY unless oldKeyHex is given (e.g. rotating back
  * after a prior rotation or recovering from a partial one). The operator
  * must update MASTER_KEY in the environment and restart afterwards.
  */
-export async function rotateMasterKey(newKeyHex: string, oldKeyHex?: string): Promise<number> {
-  const rows = await prisma.secret.findMany();
-  // Decrypt everything first — fail before touching the DB if any row is unreadable
-  const plaintexts = rows.map((row) => ({ id: row.id, plaintext: decrypt(row, oldKeyHex) }));
-  await prisma.$transaction(
-    plaintexts.map(({ id, plaintext }) =>
-      prisma.secret.update({ where: { id }, data: encrypt(plaintext, newKeyHex) }),
-    ),
-  );
-  return plaintexts.length;
+export function rotateMasterKey(newKeyHex: string, oldKeyHex?: string): Promise<number> {
+  const run = rotationQueue.then(async () => {
+    const rows = await prisma.secret.findMany();
+    // Decrypt everything first — fail before touching the DB if any row is unreadable
+    const plaintexts = rows.map((row) => ({ id: row.id, plaintext: decrypt(row, oldKeyHex) }));
+    await prisma.$transaction(
+      plaintexts.map(({ id, plaintext }) =>
+        prisma.secret.update({ where: { id }, data: encrypt(plaintext, newKeyHex) }),
+      ),
+    );
+    return plaintexts.length;
+  });
+  rotationQueue = run.catch(() => {});
+  return run;
 }
