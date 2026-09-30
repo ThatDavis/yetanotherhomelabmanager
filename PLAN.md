@@ -52,14 +52,7 @@
 
 ## Active Feature
 
-**Audit log viewer** — branch `feature/10-audit-log-viewer` (Milestone 1, issue #10)
-
-Sub-tasks:
-- [x] GET /api/audit: filters + cursor pagination
-- [x] Audit page UI (table, filters, expandable rows)
-- [x] Coverage: auth.logout audited
-- [x] Tests (filters, pagination)
-- [x] Browser verification with real data
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
@@ -68,3 +61,4 @@ Sub-tasks:
 - **PVE/PBS node registration + connection test** (Milestone 1, 2026-09-30) — encrypted API tokens, TOFU fingerprint pinning, node.test probe (issue #4)
 - **Inventory sync** (Milestone 1, 2026-09-30) — guest persistence, storage/jobs summaries, per-node isolation; verified against real PVE+PBS (issue #6)
 - **Passkey authentication** (Milestone 1, 2026-09-30) — WebAuthn ceremonies, DB sessions, first-run registration, themed login, Settings passkey management (issue #8)
+- **Audit log viewer** (Milestone 1, 2026-09-30) — filterable/paginated audit read, expandable entries, auth.logout coverage (issue #10)

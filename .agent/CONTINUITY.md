@@ -9,7 +9,7 @@
 ### Milestone 1: Foundation (In Progress)
 Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host registration, inventory view, full audit trail, Docker Compose deploy.
 - [x] Passkey (WebAuthn) auth for single operator
-- [ ] Audit log (append-only; all mutations + external calls; UI viewer)
+- [x] Audit log (append-only; all mutations + external calls; UI viewer)
 - [ ] Encrypted secrets store (AES-GCM, env MASTER_KEY, fail-loud without it)
 - [x] Inventory sync (PVE guests/storage, PBS backup jobs)
 - [x] Guest host registration: master SSH keypair + bootstrap script; SSH executor
@@ -88,6 +88,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Coverage: auth.logout audited |
 |  |    ✓ Tests (filters, pagination) |
 |  |    ✓ Browser verification with real data |
+| 2026-09-30 | Completed feature: Audit log viewer (PR #11). DoD all PASS; browser-verified with real data. |
 
 ## [DISCOVERIES]
 
@@ -111,7 +112,11 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - Node CRUD with encrypted API tokens; Proxmox client with TOFU fingerprint pinning (pin/mismatch/unpin); node.test step with version + privilege probes; real-TLS mock test suite. Verified against real Proxmox 2026-09-30.
 
 ### Inventory sync (2026-09-30)
+
 - Guest persistence (upsert+prune), PVE storage/jobs summary, PBS datastore summaries; per-node failure isolation; node EDIT drawer; default-port-by-type. Verified green against real PVE + PBS. Two live-found bugs fixed: TLS session-resumption empty-cert mismatch, node.sync skipping TOFU verification.
+
+### Audit log viewer (2026-09-30)
+- Filterable/paginated audit read API + dense Audit page with expandable output/params; auth.logout coverage gap closed. Verified in browser with real homelab audit data.
 
 ### Passkey authentication (2026-09-30)
 - WebAuthn ceremonies via SimpleWebAuthn; DB sessions (30d, revocable); open first-run registration then closed; themed login page; Settings passkey management; /api/* guarded. Verified end-to-end in Chromium (virtual authenticator) and with the operator's real passkey. Gotcha recorded: test cleanup must never delete operator credentials.
