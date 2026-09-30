@@ -47,6 +47,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     ...(init?.body ? { headers: { "content-type": "application/json" } } : {}),
     ...init,
   });
+  if (res.status === 401 && !window.location.pathname.startsWith("/login")) {
+    window.location.href = "/login";
+  }
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => ({}));
     if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {

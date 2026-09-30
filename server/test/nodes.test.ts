@@ -14,7 +14,7 @@ import { prisma } from "../src/db.js";
 
 const MOCK_PORT = 18443;
 const tmp = mkdtempSync(path.join(os.tmpdir(), "yahlm-pve-mock-"));
-const app = buildServer({ spaDir: "/nonexistent" });
+const app = buildServer({ spaDir: "/nonexistent", auth: false });
 
 let mock: https.Server;
 let authSeen = "";

@@ -5,7 +5,7 @@ import { buildServer } from "../src/app.js";
 const spaDir = path.resolve(import.meta.dirname, "fixtures/spa");
 
 test("serves SPA index.html at / and on client-side routes", async () => {
-  const app = buildServer({ spaDir });
+  const app = buildServer({ spaDir, auth: false });
 
   const root = await app.inject({ method: "GET", url: "/" });
   expect(root.statusCode).toBe(200);
@@ -19,7 +19,7 @@ test("serves SPA index.html at / and on client-side routes", async () => {
 });
 
 test("API misses return JSON 404, not the SPA", async () => {
-  const app = buildServer({ spaDir });
+  const app = buildServer({ spaDir, auth: false });
   const res = await app.inject({ method: "GET", url: "/api/nope" });
   expect(res.statusCode).toBe(404);
   expect(res.json()).toEqual({ error: "not found" });
@@ -27,7 +27,10 @@ test("API misses return JSON 404, not the SPA", async () => {
 });
 
 test("without a built SPA, / is 404 and /health still works", async () => {
-  const app = buildServer({ spaDir: path.resolve(import.meta.dirname, "fixtures/no-spa") });
+  const app = buildServer({
+    spaDir: path.resolve(import.meta.dirname, "fixtures/no-spa"),
+    auth: false,
+  });
   expect((await app.inject({ method: "GET", url: "/" })).statusCode).toBe(404);
   expect((await app.inject({ method: "GET", url: "/health" })).statusCode).toBe(200);
   await app.close();

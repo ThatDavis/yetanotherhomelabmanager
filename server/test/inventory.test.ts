@@ -14,7 +14,7 @@ import { prisma } from "../src/db.js";
 const MOCK_PORT = 18444;
 const DEAD_PORT = 18445;
 const tmp = mkdtempSync(path.join(os.tmpdir(), "yahlm-inv-mock-"));
-const app = buildServer({ spaDir: "/nonexistent" });
+const app = buildServer({ spaDir: "/nonexistent", auth: false });
 
 let mock: https.Server;
 let guestList: unknown[] = [

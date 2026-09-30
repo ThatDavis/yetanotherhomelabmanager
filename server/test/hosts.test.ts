@@ -3,7 +3,7 @@ import { afterEach, expect, test } from "vitest";
 import { buildServer } from "../src/app.js";
 import { prisma } from "../src/db.js";
 
-const app = buildServer({ spaDir: "/nonexistent" });
+const app = buildServer({ spaDir: "/nonexistent", auth: false });
 
 const host = {
   alias: "test-host",
