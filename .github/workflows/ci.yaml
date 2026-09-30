@@ -40,6 +40,8 @@ jobs:
         run: pnpm check
       - name: Prisma validate
         run: pnpm --filter @yahlm/server prisma:validate
+      - name: Prisma generate
+        run: pnpm --filter @yahlm/server exec prisma generate
       - name: Generate test MASTER_KEY
         run: echo "MASTER_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
       - name: Apply migrations
