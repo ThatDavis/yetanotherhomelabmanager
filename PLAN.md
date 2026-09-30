@@ -52,15 +52,7 @@
 
 ## Active Feature
 
-**Passkey authentication** — branch `feature/8-passkey-auth` (Milestone 1, issue #8)
-
-Sub-tasks:
-- [x] Prisma Credential + Session models
-- [x] Auth module (sessions, RP config, guard) + routes (register/login/logout/status/credentials)
-- [x] Open first-run registration; additional passkeys authenticated
-- [x] Themed login page + 401 redirect + logout
-- [x] Settings passkey management
-- [x] Tests + full ceremony verification (virtual authenticator)
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
@@ -68,3 +60,4 @@ Sub-tasks:
 - **Guest host registration + SSH executor** (Milestone 1, 2026-09-30) — master keypair + bootstrap, step contract with mandatory audit, health.check probe, Guests UI (issue #2)
 - **PVE/PBS node registration + connection test** (Milestone 1, 2026-09-30) — encrypted API tokens, TOFU fingerprint pinning, node.test probe (issue #4)
 - **Inventory sync** (Milestone 1, 2026-09-30) — guest persistence, storage/jobs summaries, per-node isolation; verified against real PVE+PBS (issue #6)
+- **Passkey authentication** (Milestone 1, 2026-09-30) — WebAuthn ceremonies, DB sessions, first-run registration, themed login, Settings passkey management (issue #8)

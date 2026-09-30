@@ -8,7 +8,7 @@
 
 ### Milestone 1: Foundation (In Progress)
 Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host registration, inventory view, full audit trail, Docker Compose deploy.
-- [ ] Passkey (WebAuthn) auth for single operator
+- [x] Passkey (WebAuthn) auth for single operator
 - [ ] Audit log (append-only; all mutations + external calls; UI viewer)
 - [ ] Encrypted secrets store (AES-GCM, env MASTER_KEY, fail-loud without it)
 - [x] Inventory sync (PVE guests/storage, PBS backup jobs)
@@ -81,6 +81,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Themed login page + 401 redirect + logout |
 |  |    ✓ Settings passkey management |
 |  |    ✓ Tests + full ceremony verification (virtual authenticator) |
+| 2026-09-30 | Completed feature: Passkey authentication (PR #9). DoD all PASS; full ceremony verified with virtual authenticator + operator's real passkey registered. |
 
 ## [DISCOVERIES]
 
@@ -89,6 +90,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - 2026-09-28: Docker not available on the dev workstation — compose stack verified statically; runtime deploy verification must happen on the homelab.
 - 2026-09-30: Node TLS session resumption returns empty peer certificates — any fingerprint pinning must disable session caching (maxCachedSessions: 0).
 - 2026-09-30: PVE permissions: /api2/json/nodes works with minimal perms, but /cluster/resources needs the ACL on path "/" — and with Privilege Separation ON, the token needs its OWN ACL entry (user perms don't flow). PVEAuditor on / covers sync.
+- 2026-09-30: Virtual authenticators (CDP) don't persist credentials across browser tabs — WebAuthn e2e must run register+login in one tab session. Test DB cleanup must be scoped to test-created rows once real operator data exists.
 
 ## [OUTCOMES]
 
@@ -99,7 +101,11 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - Host CRUD + master ed25519 keypair (encrypted at rest) + idempotent bootstrap script; SSH executor with combined tagged stream; step contract with mandatory audit (health.check probe); pulled forward minimal crypto + audit writer. Verified end-to-end on podman sshd; 19/19 tests.
 
 ### PVE/PBS node registration + connection test (2026-09-30)
+
 - Node CRUD with encrypted API tokens; Proxmox client with TOFU fingerprint pinning (pin/mismatch/unpin); node.test step with version + privilege probes; real-TLS mock test suite. Verified against real Proxmox 2026-09-30.
 
 ### Inventory sync (2026-09-30)
 - Guest persistence (upsert+prune), PVE storage/jobs summary, PBS datastore summaries; per-node failure isolation; node EDIT drawer; default-port-by-type. Verified green against real PVE + PBS. Two live-found bugs fixed: TLS session-resumption empty-cert mismatch, node.sync skipping TOFU verification.
+
+### Passkey authentication (2026-09-30)
+- WebAuthn ceremonies via SimpleWebAuthn; DB sessions (30d, revocable); open first-run registration then closed; themed login page; Settings passkey management; /api/* guarded. Verified end-to-end in Chromium (virtual authenticator) and with the operator's real passkey. Gotcha recorded: test cleanup must never delete operator credentials.
