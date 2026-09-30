@@ -74,6 +74,13 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 
 |  |    ✓ Tests (two-node mock, per-node isolation, prune, PBS) |
 | 2026-09-30 | Completed feature: Inventory sync (PR #7). DoD all PASS; verified against real PVE+PBS (green TEST/SYNC, real guests listed). TLS session-resumption fingerprint bug found + fixed via live testing. |
+| 2026-09-30 | Started feature: Passkey authentication (Issue #8) on branch feature/8-passkey-auth. |
+|  |    ✓ Prisma Credential + Session models |
+|  |    ✓ Auth module (sessions, RP config, guard) + routes (register/login/logout/status/credentials) |
+|  |    ✓ Open first-run registration; additional passkeys authenticated |
+|  |    ✓ Themed login page + 401 redirect + logout |
+|  |    ✓ Settings passkey management |
+|  |    ✓ Tests + full ceremony verification (virtual authenticator) |
 
 ## [DISCOVERIES]
 

@@ -52,7 +52,15 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**Passkey authentication** — branch `feature/8-passkey-auth` (Milestone 1, issue #8)
+
+Sub-tasks:
+- [x] Prisma Credential + Session models
+- [x] Auth module (sessions, RP config, guard) + routes (register/login/logout/status/credentials)
+- [x] Open first-run registration; additional passkeys authenticated
+- [x] Themed login page + 401 redirect + logout
+- [x] Settings passkey management
+- [x] Tests + full ceremony verification (virtual authenticator)
 
 ## Completed Features
 
