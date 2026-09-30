@@ -119,7 +119,8 @@ test("PVE sync persists guests with storage and job summary", async () => {
   expect(res.json().output).toContain("1 backup jobs (1 enabled)");
 
   const guests = await app.inject({ method: "GET", url: "/api/guests" });
-  const rows = guests.json();
+  // Filter to this node: the dev DB may hold other (real) inventory
+  const rows = guests.json().filter((g: { nodeName: string }) => g.nodeName === "inv-pve");
   expect(rows).toHaveLength(2);
   expect(rows.find((g: { name: string }) => g.name === "web-1")).toMatchObject({
     vmid: 100,
