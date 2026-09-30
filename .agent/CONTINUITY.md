@@ -36,6 +36,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - 2026-09-28: Theme — Catppuccin Mocha base, mauve accent. Decorative direction revised to 80s retro-terminal (Alien/MU-TH-UR: chamfered panels, phosphor glow, scanlines, uppercase micro-labels), NOT neon cyberpunk; confined to decorative surfaces. CSS-only animations, reduced-motion support (docs/UI.md §6).
 - 2026-09-28: Proxmox access via API tokens where possible, SSH+CLI for gaps.
 - 2026-09-29: Project renamed to Yet Another Home Lab Manager (YAHLM); remote moved to GitHub (github.com/ThatDavis/yetanotherhomelabmanager); CI moved from Forgejo Actions to GitHub Actions.
+- 2026-09-29: Design principles adopted (docs/ARCHITECTURE.md): step contract `(ctx, params) → StepResult`; ok-boolean for expected failures + throw for bugs; combined tagged output stream; noun.verb step names; composition in TS only (no DSL); no raw exec API endpoint; primitives need ≥2 consumers.
 
 ## [PROGRESS]
 
