@@ -5,6 +5,7 @@ import { Audit } from "./pages/Audit";
 import { Dashboard } from "./pages/Dashboard";
 import { Guests } from "./pages/Guests";
 import { Jobs } from "./pages/Jobs";
+import { Login } from "./pages/Login";
 import { Nodes } from "./pages/Nodes";
 import { Settings } from "./pages/Settings";
 
@@ -20,6 +21,10 @@ export const routes = [
       { path: "audit", Component: Audit },
       { path: "settings", Component: Settings },
     ],
+  },
+  {
+    path: "/login",
+    Component: Login,
   },
 ];
 

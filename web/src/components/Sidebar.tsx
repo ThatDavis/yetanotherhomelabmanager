@@ -48,6 +48,16 @@ export function Sidebar() {
         ))}
       </nav>
 
+      <button
+        type="button"
+        onClick={async () => {
+          await fetch("/api/auth/logout", { method: "POST" });
+          window.location.href = "/login";
+        }}
+        className="micro-label block w-full border-t border-surface0 px-4 py-2 text-left transition-colors duration-150 hover:text-status-error"
+      >
+        ⏻ LOGOUT
+      </button>
       <div className="micro-label border-t border-surface0 px-4 py-2">{"SYS.STATUS // M1"}</div>
     </aside>
   );
