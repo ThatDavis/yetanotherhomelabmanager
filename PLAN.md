@@ -52,15 +52,8 @@
 
 ## Active Feature
 
-**App shell** — branch `feature/app-shell` (Milestone 1, no issue — Forgejo local-only)
-
-Sub-tasks:
-- [x] Catppuccin Mocha + status tokens in Tailwind theme
-- [x] Router + sidebar shell + section placeholders
-- [x] Dashboard page (final M2 layout, modest content)
-- [x] Fastify serves built SPA in production
-- [x] Tests + full verification
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
-*None yet.*
+- **App shell** (Milestone 1, 2026-09-29) — Catppuccin Mocha themed sidebar shell, react-router, dashboard, production SPA serving
