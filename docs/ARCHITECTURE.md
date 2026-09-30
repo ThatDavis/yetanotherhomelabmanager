@@ -1,4 +1,4 @@
-# Architecture — Home Lab Manager
+# Architecture — Yet Another Home Lab Manager
 
 > Last updated: 2026-09-28
 
@@ -20,19 +20,19 @@
 | Lint/Format | Biome | One tool, one config |
 | Package manager | pnpm workspace (`server/`, `web/`) | Strict, fast, disk-efficient |
 | Hosting | Docker Compose behind existing reverse proxy/CA | Homelab-native; proxy supplies TLS+hostname for passkeys |
-| CI/CD | Forgejo Actions | Matches repo host |
+| CI/CD | GitHub Actions | Repo hosted on GitHub |
 
 ## Project Structure
 
 ```
 .
-├── server/                 # @hlm/server — Fastify API
+├── server/                 # @yahlm/server — Fastify API
 │   ├── src/
 │   │   ├── app.ts          #   server factory (testable via app.inject)
 │   │   └── index.ts        #   entry: env validation, listen
 │   ├── prisma/schema.prisma
 │   └── test/
-├── web/                    # @hlm/web — React SPA
+├── web/                    # @yahlm/web — React SPA
 │   ├── src/                #   App.tsx, main.tsx, index.css
 │   ├── vite.config.ts      #   dev proxy: /api → :3000
 │   └── test/

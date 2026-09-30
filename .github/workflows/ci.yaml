@@ -18,7 +18,7 @@ jobs:
       - name: Biome check
         run: pnpm check
       - name: Prisma validate
-        run: pnpm --filter @hlm/server prisma:validate
+        run: pnpm --filter @yahlm/server prisma:validate
       - name: Test
         run: pnpm test
       - name: Build

@@ -1,4 +1,4 @@
-# CONTINUITY — Home Lab Manager
+# CONTINUITY — Yet Another Home Lab Manager
 
 > Canonical project briefing. Read at session start.
 > Stack: TypeScript (Node 22) + Fastify + React/Tailwind + PostgreSQL/Prisma

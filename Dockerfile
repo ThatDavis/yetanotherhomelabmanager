@@ -17,12 +17,12 @@ RUN pnpm install --frozen-lockfile || pnpm install
 # --- Build web SPA ---
 FROM deps AS build-web
 COPY web/ web/
-RUN pnpm --filter @hlm/web build
+RUN pnpm --filter @yahlm/web build
 
 # --- Build server ---
 FROM deps AS build-server
 COPY server/ server/
-RUN pnpm --filter @hlm/server build
+RUN pnpm --filter @yahlm/server build
 
 # --- Runtime ---
 FROM node:22-alpine AS runtime

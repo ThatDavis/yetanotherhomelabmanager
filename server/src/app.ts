@@ -11,7 +11,7 @@ type BuildOptions = {
 export function buildServer(opts: BuildOptions = {}) {
   const app = Fastify({ logger: true });
 
-  app.get("/health", async () => ({ status: "ok", service: "home-lab-manager" }));
+  app.get("/health", async () => ({ status: "ok", service: "yet-another-home-lab-manager" }));
 
   const spaDir =
     opts.spaDir ?? process.env.SPA_DIR ?? path.resolve(import.meta.dirname, "../../web/dist");

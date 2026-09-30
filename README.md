@@ -1,4 +1,4 @@
-# Home Lab Manager
+# Yet Another Home Lab Manager
 
 A web UI to manage and monitor homelab servers, and orchestrate/automate backups, updates, and migration of containers across VMs — Proxmox-first, with security and auditing at its core.
 
@@ -12,7 +12,7 @@ A web UI to manage and monitor homelab servers, and orchestrate/automate backups
 - **Testing:** Vitest
 - **Lint/Format:** Biome
 - **Package manager:** pnpm (workspace: `server/` + `web/`)
-- **CI/CD:** Forgejo Actions
+- **CI/CD:** GitHub Actions
 - **Hosting:** Docker Compose on the homelab, behind an existing reverse proxy/CA
 
 ## Getting Started
@@ -27,8 +27,8 @@ A web UI to manage and monitor homelab servers, and orchestrate/automate backups
 ### Setup
 
 ```bash
-git clone <repo-url> home-lab-manager
-cd home-lab-manager
+git clone https://github.com/ThatDavis/yetanotherhomelabmanager.git
+cd yetanotherhomelabmanager
 pnpm install
 
 cp .env.example .env
@@ -59,23 +59,30 @@ Point your reverse proxy (TLS) at `127.0.0.1:3000`. `RP_ID`/`ORIGIN` in `.env` m
 
 ```
 .
-├── server/            # Fastify API (@hlm/server)
-│   ├── src/           #   app.ts (factory), index.ts (entry)
+├── server/            # Fastify API (@yahlm/server)
+│   ├── src/           #   app.ts (factory; serves web/dist SPA + /health), index.ts (entry)
 │   ├── prisma/        #   schema + migrations
-│   └── test/          #   vitest
-├── web/               # React SPA (@hlm/web)
-│   ├── src/           #   App.tsx, main.tsx, index.css (Tailwind)
-│   └── test/          #   vitest
-├── docs/              # SPEC.md, ARCHITECTURE.md, adr/
+│   └── test/          #   vitest (health, SPA fallback)
+├── web/               # React SPA (@yahlm/web)
+│   ├── src/
+│   │   ├── components/  # AppShell, Sidebar, Panel, StatusBadge, …
+│   │   ├── pages/       # Dashboard, Nodes, Guests, Jobs, Audit, Settings
+│   │   └── index.css    # Catppuccin Mocha theme + status tokens (docs/UI.md)
+│   └── test/          #   vitest (router/pages)
+├── docs/              # SPEC.md, ARCHITECTURE.md, UI.md, adr/
 ├── .agent/            # CONTINUITY.md — canonical briefing for AI sessions
 ├── Dockerfile         # Multi-stage: build web + server, run with migrations
 ├── docker-compose.yml # app + postgres
 └── PLAN.md            # Roadmap
 ```
 
+In production the Fastify server serves the built SPA from `web/dist` (client-route
+fallback to `index.html`; `/api/*` misses stay JSON 404). Override the location with
+the `SPA_DIR` env var.
+
 ## Features
 
-Scaffold only — health endpoint + SPA shell. See [PLAN.md](PLAN.md) for the roadmap:
+App shell complete: themed sidebar, dashboard, section routing, production SPA serving. See [PLAN.md](PLAN.md) for the roadmap:
 
 1. **M1 — Foundation:** passkey auth, audit log, encrypted secrets, PVE/PBS + host inventory, Proxmox API client, SSH executor
 2. **M2 — Monitoring:** dashboards, health checks, alerting

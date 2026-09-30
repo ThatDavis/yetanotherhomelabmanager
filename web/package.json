@@ -1,5 +1,5 @@
 {
-  "name": "@hlm/web",
+  "name": "@yahlm/web",
   "private": true,
   "type": "module",
   "scripts": {

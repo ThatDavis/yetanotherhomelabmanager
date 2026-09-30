@@ -16,9 +16,9 @@ export function Sidebar() {
     <aside className="flex w-52 shrink-0 flex-col border-r border-surface0 bg-mantle">
       <div className="border-b border-surface0 px-4 py-3">
         <div className="phosphor font-mono text-sm font-bold tracking-widest text-accent">
-          HLM<span className="animate-blink">▮</span>
+          YAHLM<span className="animate-blink">▮</span>
         </div>
-        <div className="micro-label mt-1">HOME LAB MANAGER</div>
+        <div className="micro-label mt-1">YET ANOTHER HLM</div>
       </div>
 
       <div className="border-b border-surface0 px-4 py-2">

@@ -1,10 +1,10 @@
-# Specification — Home Lab Manager
+# Specification — Yet Another Home Lab Manager
 
 > Last updated: 2026-09-28
 
 ## Overview
 
-Home Lab Manager is a single-operator web application for managing a Proxmox-based homelab: two PVE nodes (one offsite, reached over WireGuard/Tailscale) plus a separate PBS host, running a mix of Debian, RHEL, and other Linux guests. It provides inventory, monitoring, scheduled updates with post-update verification and email reports, PBS backup oversight with automated restore testing, and cross-node container migration. Security and auditing are core: passkey-only auth, secrets encrypted at rest, and an audit trail on every action. It is ansible-like but deliberately narrower in scope; host access is SSH now, with a lightweight agent as a possible later addition.
+Yet Another Home Lab Manager (YAHLM) is a single-operator web application for managing a Proxmox-based homelab: two PVE nodes (one offsite, reached over WireGuard/Tailscale) plus a separate PBS host, running a mix of Debian, RHEL, and other Linux guests. It provides inventory, monitoring, scheduled updates with post-update verification and email reports, PBS backup oversight with automated restore testing, and cross-node container migration. Security and auditing are core: passkey-only auth, secrets encrypted at rest, and an audit trail on every action. It is ansible-like but deliberately narrower in scope; host access is SSH now, with a lightweight agent as a possible later addition.
 
 ## Milestone 1 — Foundation
 
