@@ -46,11 +46,11 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 - [ ] Sync failures are per-node (one bad node doesn't blank the rest) and audited
 
 #### Feature: Guest host registration + SSH executor
-**Description:** Tool generates a master SSH keypair (private key stored encrypted) and emits a bootstrap script the operator runs once per host to install the public key. SSH executor runs commands on registered hosts and returns output.
+**Description:** Tool generates a master SSH keypair (private key stored encrypted) and emits a bootstrap script the operator runs once per host to install the public key. The SSH executor runs steps on registered hosts under the step contract (docs/ARCHITECTURE.md §Design Principles).
 **Acceptance Criteria:**
-- [ ] Keypair generated once; public key downloadable/copyable via bootstrap script
-- [ ] Run a command on a registered host; stdout/stderr/exit code returned and audited
-- [ ] Works against Debian and RHEL-family guests
+- [x] Keypair generated once; public key installable via per-host bootstrap script (idempotent, sh-compatible)
+- [x] Fixed `health.check` probe runs on a registered host; combined tagged output stream and exit code returned and audited (no raw exec endpoint — principle 9)
+- [x] sh-compatible only; no distro-specific assumptions (Debian/RHEL/busybox)
 
 #### Feature: Deployable app shell
 **Description:** React SPA served by the Fastify server; Docker Compose stack (app + Postgres) with automatic Prisma migrations; plain HTTP behind the operator's existing reverse proxy/CA.

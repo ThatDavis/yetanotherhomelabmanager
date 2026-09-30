@@ -13,7 +13,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - [ ] Encrypted secrets store (AES-GCM, env MASTER_KEY, fail-loud without it)
 - [ ] PVE/PBS node registration + per-node connection test
 - [ ] Inventory sync (PVE guests/storage, PBS backup jobs)
-- [ ] Guest host registration: master SSH keypair + bootstrap script; SSH executor
+- [x] Guest host registration: master SSH keypair + bootstrap script; SSH executor
 - [x] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
 
 ### Future Milestones
@@ -50,6 +50,14 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Fastify serves built SPA in production |
 |  |    ✓ Tests + full verification |
 | 2026-09-29 | Completed feature: App shell. DoD: build/test/lint/secrets PASS; README updated. Chamfered rim borders (two-layer clip-path, 2px) settled after 3 iterations. |
+| 2026-09-30 | Started feature: Guest host registration + SSH executor (Issue #2) on branch feature/2-guest-host-ssh-executor. |
+|  |    ✓ Prisma Host + AuditEntry + Secret models, initial migration |
+|  |    ✓ crypto module (AES-GCM) + minimal secrets store |
+|  |    ✓ Master keypair generation + bootstrap script |
+|  |    ✓ SSH executor + step contract + health.check probe |
+|  |    ✓ API: hosts CRUD + probe + bootstrap + audit read |
+|  |    ✓ Guests page UI (table, register drawer, bootstrap viewer, probe terminal) |
+| 2026-09-30 | Completed feature: Guest host registration + SSH executor (PR #3). DoD all PASS; end-to-end verified against podman sshd. |
 
 ## [DISCOVERIES]
 
@@ -61,3 +69,6 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 
 ### App shell (2026-09-29)
 - Catppuccin Mocha themed shell (YAHLM wordmark), sidebar nav for M1 sections, dashboard with empty-state CTA, react-router, Fastify serves built SPA with client-route fallback; 7 tests green; verified live + in browser.
+
+### Guest host registration + SSH executor (2026-09-30)
+- Host CRUD + master ed25519 keypair (encrypted at rest) + idempotent bootstrap script; SSH executor with combined tagged stream; step contract with mandatory audit (health.check probe); pulled forward minimal crypto + audit writer. Verified end-to-end on podman sshd; 19/19 tests.

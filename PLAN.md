@@ -57,3 +57,4 @@
 ## Completed Features
 
 - **App shell** (Milestone 1, 2026-09-29) — Catppuccin Mocha themed sidebar shell, react-router, dashboard, production SPA serving
+- **Guest host registration + SSH executor** (Milestone 1, 2026-09-30) — master keypair + bootstrap, step contract with mandatory audit, health.check probe, Guests UI (issue #2)

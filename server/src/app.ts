@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
+import { hostRoutes } from "./routes/hosts.js";
 
 type BuildOptions = {
   /** Directory containing the built SPA (index.html). Defaults to ../web/dist or $SPA_DIR. */
@@ -13,6 +14,7 @@ export function buildServer(opts: BuildOptions = {}) {
 
   app.get("/health", async () => ({ status: "ok", service: "yet-another-home-lab-manager" }));
 
+  app.register(hostRoutes);
   const spaDir =
     opts.spaDir ?? process.env.SPA_DIR ?? path.resolve(import.meta.dirname, "../../web/dist");
 

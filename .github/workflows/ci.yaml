@@ -7,10 +7,31 @@ on:
 
 jobs:
   check:
-    runs-on: docker
-    container: node:22
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: hlm
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: hlm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hlm"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://hlm:ci@localhost:5432/hlm
+
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Install pnpm
         run: npm install -g pnpm
       - name: Install dependencies
@@ -19,6 +40,12 @@ jobs:
         run: pnpm check
       - name: Prisma validate
         run: pnpm --filter @yahlm/server prisma:validate
+      - name: Prisma generate
+        run: pnpm --filter @yahlm/server exec prisma generate
+      - name: Generate test MASTER_KEY
+        run: echo "MASTER_KEY=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - name: Apply migrations
+        run: pnpm --filter @yahlm/server prisma:migrate
       - name: Test
         run: pnpm test
       - name: Build
