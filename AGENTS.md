@@ -1,4 +1,4 @@
-# AI Instructions for Home Lab Manager
+# AI Instructions for Yet Another Home Lab Manager
 
 These instructions apply to every AI coding session in this project.
 

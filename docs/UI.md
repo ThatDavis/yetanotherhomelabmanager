@@ -1,4 +1,4 @@
-# UI/UX Guidelines — Home Lab Manager
+# UI/UX Guidelines — Yet Another Home Lab Manager
 
 > Last updated: 2026-09-28
 > Agreed during pre-M1 design session. Applies to all milestones; amend via discussion, not drift.

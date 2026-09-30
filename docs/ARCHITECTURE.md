@@ -1,4 +1,4 @@
-# Architecture — Home Lab Manager
+# Architecture — Yet Another Home Lab Manager
 
 > Last updated: 2026-09-28
 
@@ -20,19 +20,19 @@
 | Lint/Format | Biome | One tool, one config |
 | Package manager | pnpm workspace (`server/`, `web/`) | Strict, fast, disk-efficient |
 | Hosting | Docker Compose behind existing reverse proxy/CA | Homelab-native; proxy supplies TLS+hostname for passkeys |
-| CI/CD | Forgejo Actions | Matches repo host |
+| CI/CD | GitHub Actions | Repo hosted on GitHub |
 
 ## Project Structure
 
 ```
 .
-├── server/                 # @hlm/server — Fastify API
+├── server/                 # @yahlm/server — Fastify API
 │   ├── src/
 │   │   ├── app.ts          #   server factory (testable via app.inject)
 │   │   └── index.ts        #   entry: env validation, listen
 │   ├── prisma/schema.prisma
 │   └── test/
-├── web/                    # @hlm/web — React SPA
+├── web/                    # @yahlm/web — React SPA
 │   ├── src/                #   App.tsx, main.tsx, index.css
 │   ├── vite.config.ts      #   dev proxy: /api → :3000
 │   └── test/
@@ -48,6 +48,22 @@
 - `buildServer()` factory pattern so tests use `app.inject` without listening
 - Migrations always via `prisma migrate deploy` at container start — never `db push` in prod
 - UI patterns (shell, status tokens, jobs, drawers) follow `docs/UI.md` — amend the doc, never drift per-screen
+- Modules stay small and single-purpose; each file does one thing. Extraction happens when it removes duplication or clarifies the system — never for hypothetical reuse (mirrors the "primitives earn existence" rule for code structure).
+
+## Design Principles (unix-philosophy bias)
+
+Adopted 2026-09-29 as a *bias, not an architecture*. The domain is already unix-shaped (SSH, apt, rsync, systemctl); M3–M5 are the same problem (compose steps over SSH, stream output, verify, record). These rules steer the executor and all automation work.
+
+1. **Steps, not scripts.** Every operation on infrastructure is a *step*: one TypeScript function, one responsibility.
+2. **Uniform contract.** Every step: `(ctx, params) → Promise<StepResult>`. `ctx` carries target, executor, and audit handle.
+3. **Failure model.** Expected failures (nonzero exit, timeout, unreachable host) return `{ ok: false, output }`. Bugs and invariant violations throw. Never swallow either into the other.
+4. **Streams for humans, JSON for machines.** Command output is one interleaved stream, lines tagged stdout/stderr (like `docker logs`), rendered verbatim in the UI. Structured data flows between steps as JSON — code never parses human output.
+5. **Composition in code.** Workflows (update orchestration, restore testing, migration) are async functions awaiting steps in order. No pipeline DSL, no config-driven composition — ever.
+6. **Everything recorded.** A step cannot run without an audit entry: dotted name, target, params (secrets redacted), result, duration, output.
+7. **noun.verb naming.** Canonical step names are dotted strings (`guest.snapshot`, `os.update`, `health.check`) used in audit log and job UI; function names map directly.
+8. **Primitives earn existence.** A step is extracted only when two workflows need it or it's independently useful; otherwise it stays inline in the workflow.
+9. **No raw exec endpoint.** The API exposes workflows and safe probes (health check, connection test) — never arbitrary command execution. Audited or not, a raw exec endpoint is one XSS away from root on every host.
+10. **CLI-shaped API.** Noun-verb, JSON-only endpoints so a future CLI is a thin wrapper. No CLI until someone feels the itch.
 
 ## Key Design Decisions
 

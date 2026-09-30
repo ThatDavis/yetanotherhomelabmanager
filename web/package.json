@@ -1,5 +1,5 @@
 {
-  "name": "@hlm/web",
+  "name": "@yahlm/web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-router": "^8.4.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.0",

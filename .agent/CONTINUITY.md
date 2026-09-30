@@ -1,4 +1,4 @@
-# CONTINUITY — Home Lab Manager
+# CONTINUITY — Yet Another Home Lab Manager
 
 > Canonical project briefing. Read at session start.
 > Stack: TypeScript (Node 22) + Fastify + React/Tailwind + PostgreSQL/Prisma
@@ -14,7 +14,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - [ ] PVE/PBS node registration + per-node connection test
 - [ ] Inventory sync (PVE guests/storage, PBS backup jobs)
 - [ ] Guest host registration: master SSH keypair + bootstrap script; SSH executor
-- [ ] App shell behind existing reverse proxy (RP_ID/ORIGIN env)
+- [x] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
 
 ### Future Milestones
 - M2 Monitoring: dashboards; liveness/service/guest-agent health checks; alerting
@@ -35,12 +35,21 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - 2026-09-28: UI/UX guidelines set (docs/UI.md): dark dense console, sidebar nav growing with milestones, dashboard landing, 5-state status tokens, drawers + typed confirms, job center + toasts via SSE, desktop-first/usable-mobile.
 - 2026-09-28: Theme — Catppuccin Mocha base, mauve accent. Decorative direction revised to 80s retro-terminal (Alien/MU-TH-UR: chamfered panels, phosphor glow, scanlines, uppercase micro-labels), NOT neon cyberpunk; confined to decorative surfaces. CSS-only animations, reduced-motion support (docs/UI.md §6).
 - 2026-09-28: Proxmox access via API tokens where possible, SSH+CLI for gaps.
+- 2026-09-29: Project renamed to Yet Another Home Lab Manager (YAHLM); remote moved to GitHub (github.com/ThatDavis/yetanotherhomelabmanager); CI moved from Forgejo Actions to GitHub Actions.
+- 2026-09-29: Design principles adopted (docs/ARCHITECTURE.md): step contract `(ctx, params) → StepResult`; ok-boolean for expected failures + throw for bugs; combined tagged output stream; noun.verb step names; composition in TS only (no DSL); no raw exec API endpoint; primitives need ≥2 consumers.
 
 ## [PROGRESS]
 
 | Date | What was done |
 |------|---------------|
 | 2026-09-28 | Project scaffold: pnpm workspace (server + web), Fastify /health, React SPA shell, Prisma/Postgres, Biome, Vitest (all green), Dockerfile + compose, full doc set. Built server smoke-tested live (`/health` → ok). |
+| 2026-09-28 | Started feature: App shell (no issue — Forgejo local-only) on branch feature/app-shell. |
+|  |    ✓ Catppuccin Mocha + status tokens in Tailwind theme |
+|  |    ✓ Router + sidebar shell + section placeholders |
+|  |    ✓ Dashboard page (final M2 layout, modest content) |
+|  |    ✓ Fastify serves built SPA in production |
+|  |    ✓ Tests + full verification |
+| 2026-09-29 | Completed feature: App shell. DoD: build/test/lint/secrets PASS; README updated. Chamfered rim borders (two-layer clip-path, 2px) settled after 3 iterations. |
 
 ## [DISCOVERIES]
 
@@ -50,4 +59,5 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 
 ## [OUTCOMES]
 
-*None yet.*
+### App shell (2026-09-29)
+- Catppuccin Mocha themed shell (YAHLM wordmark), sidebar nav for M1 sections, dashboard with empty-state CTA, react-router, Fastify serves built SPA with client-route fallback; 7 tests green; verified live + in browser.
