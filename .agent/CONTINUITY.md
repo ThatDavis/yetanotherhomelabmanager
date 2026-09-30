@@ -50,6 +50,14 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Fastify serves built SPA in production |
 |  |    ✓ Tests + full verification |
 | 2026-09-29 | Completed feature: App shell. DoD: build/test/lint/secrets PASS; README updated. Chamfered rim borders (two-layer clip-path, 2px) settled after 3 iterations. |
+| 2026-09-30 | Started feature: Guest host registration + SSH executor (Issue #2) on branch feature/2-guest-host-ssh-executor. |
+|  |    ✓ Prisma Host + AuditEntry + Secret models, initial migration |
+|  |    ✓ crypto module (AES-GCM) + minimal secrets store |
+|  |    ✓ Master keypair generation + bootstrap script |
+|  |    ✓ SSH executor + step contract + health.check probe |
+|  |    ✓ API: hosts CRUD + probe + bootstrap + audit read |
+|  |    ✓ Guests page UI (table, register drawer, bootstrap viewer, probe terminal) |
+|  |    ✓ Tests + end-to-end verification (podman sshd target) |
 
 ## [DISCOVERIES]
 
