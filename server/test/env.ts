@@ -6,7 +6,7 @@ import path from "node:path";
 const envPath = path.resolve(import.meta.dirname, "../.env");
 for (const line of readFileSync(envPath, "utf8").split("\n")) {
   const match = /^([A-Z_]+)=(.*)$/.exec(line.trim());
-  if (match && match[1] && !process.env[match[1]]) {
+  if (match?.[1] && !process.env[match[1]]) {
     process.env[match[1]] = match[2];
   }
 }
