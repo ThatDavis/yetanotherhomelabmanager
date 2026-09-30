@@ -65,6 +65,13 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Nodes page UI |
 |  |    ✓ Tests + verification (real-TLS mock PVE server) |
 | 2026-09-30 | Completed feature: PVE/PBS node registration + connection test (PR #5). DoD all PASS; TOFU lifecycle verified against real-TLS mock. |
+| 2026-09-30 | Started feature: Inventory sync (Issue #6) on branch feature/6-inventory-sync. |
+|  |    ✓ Prisma Guest model + migration |
+|  |    ✓ node.sync step (PVE resources + jobs, PBS datastores) |
+|  |    ✓ POST /api/sync + GET /api/guests + per-node sync |
+|  |    ✓ Guests page: PVE inventory panel + SYNC button |
+|  |    ✓ Nodes page: sync action + result drawer |
+|  |    ✓ Tests (two-node mock, per-node isolation, prune, PBS) |
 
 ## [DISCOVERIES]
 

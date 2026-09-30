@@ -52,7 +52,15 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**Inventory sync** — branch `feature/6-inventory-sync` (Milestone 1, issue #6)
+
+Sub-tasks:
+- [x] Prisma Guest model + migration
+- [x] node.sync step (PVE resources + jobs, PBS datastores)
+- [x] POST /api/sync + GET /api/guests + per-node sync
+- [x] Guests page: PVE inventory panel + SYNC button
+- [x] Nodes page: sync action + result drawer
+- [x] Tests (two-node mock, per-node isolation, prune, PBS)
 
 ## Completed Features
 

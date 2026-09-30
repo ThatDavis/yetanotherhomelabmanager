@@ -47,6 +47,21 @@ model Node {
   updatedAt      DateTime @updatedAt
 }
 
+// A VM or LXC on a PVE node, refreshed by node.sync.
+model Guest {
+  id       String @id @default(cuid())
+  nodeDbId String // FK to the Node row that reported this guest
+  pveNode  String // physical PVE node name within the cluster
+  vmid     Int
+  type     String // "qemu" | "lxc"
+  name     String
+  status   String // running, stopped, paused, ...
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([nodeDbId, vmid])
+}
+
 // Encrypted-at-rest secrets (AES-GCM via MASTER_KEY). id is a well-known name,
 // e.g. "master-ssh-private-key".
 model Secret {

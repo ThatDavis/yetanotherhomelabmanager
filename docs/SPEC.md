@@ -39,11 +39,11 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 - [x] 401 (bad token) and 403 (insufficient privileges) surface distinctly, with a privilege hint (PVEAuditor / Datastore.Audit)
 
 #### Feature: Inventory sync
-**Description:** On demand (and later on a schedule), pull VMs, LXCs, and storage from PVE nodes; backup jobs from PBS. Display in the UI.
+**Description:** On demand (and later on a schedule), pull VMs, LXCs, and storage from PVE nodes; backup jobs (vzdump, PVE-side) and PBS datastore summaries. Display in the UI.
 **Acceptance Criteria:**
-- [ ] Inventory lists guests with node, type, VMID, name, status
-- [ ] PBS backup jobs listed with last-run status
-- [ ] Sync failures are per-node (one bad node doesn't blank the rest) and audited
+- [x] Inventory lists guests with node, type, VMID, name, status
+- [x] PVE backup jobs summarized (count, enabled); PBS datastores with snapshot counts and latest backup time
+- [x] Sync failures are per-node (one bad node doesn't blank the rest) and audited
 
 #### Feature: Guest host registration + SSH executor
 **Description:** Tool generates a master SSH keypair (private key stored encrypted) and emits a bootstrap script the operator runs once per host to install the public key. The SSH executor runs steps on registered hosts under the step contract (docs/ARCHITECTURE.md §Design Principles).
