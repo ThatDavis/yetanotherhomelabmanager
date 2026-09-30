@@ -48,6 +48,7 @@
 - `buildServer()` factory pattern so tests use `app.inject` without listening
 - Migrations always via `prisma migrate deploy` at container start — never `db push` in prod
 - UI patterns (shell, status tokens, jobs, drawers) follow `docs/UI.md` — amend the doc, never drift per-screen
+- Modules stay small and single-purpose; each file does one thing. Extraction happens when it removes duplication or clarifies the system — never for hypothetical reuse (mirrors the "primitives earn existence" rule for code structure).
 
 ## Design Principles (unix-philosophy bias)
 
