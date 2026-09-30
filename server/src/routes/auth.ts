@@ -175,7 +175,6 @@ export function authRoutes(app: FastifyInstance) {
       });
       return reply.code(400).send({ error: "login verification rejected" });
     }
-
     await prisma.credential.update({
       where: { id: credential.id },
       data: { counter: BigInt(verification.authenticationInfo.newCounter), lastUsedAt: new Date() },
@@ -187,6 +186,7 @@ export function authRoutes(app: FastifyInstance) {
 
   app.post("/api/auth/logout", async (req, reply) => {
     await destroySession(req, reply);
+    await audit({ action: "auth.logout", ok: true });
     return { loggedOut: true };
   });
 
