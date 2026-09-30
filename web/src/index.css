@@ -95,7 +95,14 @@
     position: relative;
     isolation: isolate;
     background: var(--chamfer-line);
-    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    clip-path: polygon(
+      0 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% 100%,
+      10px 100%,
+      0 calc(100% - 10px)
+    );
   }
   .chamfer::before {
     content: "";
@@ -133,11 +140,7 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0 2px,
-      rgb(0 0 0 / 0.14) 2px 4px
-    );
+    background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.14) 2px 4px);
   }
 
   .micro-label {
