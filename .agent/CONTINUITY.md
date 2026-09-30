@@ -58,6 +58,13 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ API: hosts CRUD + probe + bootstrap + audit read |
 |  |    ✓ Guests page UI (table, register drawer, bootstrap viewer, probe terminal) |
 | 2026-09-30 | Completed feature: Guest host registration + SSH executor (PR #3). DoD all PASS; end-to-end verified against podman sshd. |
+| 2026-09-30 | Started feature: PVE/PBS node registration + connection test (Issue #4) on branch feature/4-pve-pbs-node-registration. |
+|  |    ✓ Prisma Node model + migration |
+|  |    ✓ Proxmox API client (token auth, TOFU TLS pinning) |
+|  |    ✓ node.test step (version + privilege probe) |
+|  |    ✓ API: nodes CRUD + test + unpin (token encrypted) |
+|  |    ✓ Nodes page UI |
+|  |    ✓ Tests + verification (real-TLS mock PVE server) |
 
 ## [DISCOVERIES]
 

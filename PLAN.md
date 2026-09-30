@@ -52,7 +52,15 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**PVE/PBS node registration + connection test** — branch `feature/4-pve-pbs-node-registration` (Milestone 1, issue #4)
+
+Sub-tasks:
+- [x] Prisma Node model + migration
+- [x] Proxmox API client (token auth, TOFU TLS pinning)
+- [x] node.test step (version + privilege probe)
+- [x] API: nodes CRUD + test + unpin (token encrypted)
+- [x] Nodes page UI
+- [x] Tests + verification (real-TLS mock PVE server)
 
 ## Completed Features
 

@@ -32,11 +32,11 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 - [ ] MASTER_KEY backup requirement documented (README/.env.example)
 
 #### Feature: PVE/PBS node registration + connection test
-**Description:** Register Proxmox VE and Proxmox Backup Server nodes by URL + API token. "Test connection" verifies the token and required privileges; minimal privilege set documented.
+**Description:** Register Proxmox VE and Proxmox Backup Server nodes by URL + API token (secret encrypted at rest). "Test connection" verifies auth and required privileges; TLS uses TOFU fingerprint pinning.
 **Acceptance Criteria:**
-- [ ] Node can be added, edited, removed
-- [ ] Test connection reports success/failure with the underlying error
-- [ ] 403/insufficient-privilege responses surface clearly
+- [x] Node can be added, edited, removed (token secret redacted from API responses and audit params)
+- [x] Test connection reports success/failure with the underlying error; TOFU pins cert fingerprint on first connect, mismatch hard-fails, unpin endpoint re-trusts
+- [x] 401 (bad token) and 403 (insufficient privileges) surface distinctly, with a privilege hint (PVEAuditor / Datastore.Audit)
 
 #### Feature: Inventory sync
 **Description:** On demand (and later on a schedule), pull VMs, LXCs, and storage from PVE nodes; backup jobs from PBS. Display in the UI.
