@@ -63,6 +63,7 @@ export function PingGraph({
           strokeLinecap="round"
         />
         {failures.map((f, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: ticks are positional, never reordered
           <line
             key={i}
             x1={f.x}
