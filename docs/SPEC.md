@@ -66,13 +66,13 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 #### Feature: Notifications on state change (M2.3)
 **Description:** One notification per status transition — ping targets DOWN (after alertAfter) and UP recovery, node liveness DOWN/UP. Channels: email via env-configured SMTP relay and DB-backed webhooks (editable without container restart). Per-target channel pick; node transitions go to all enabled channels.
 **Acceptance Criteria:**
-- [ ] Target DOWN sends one alert (after alertAfter threshold), UP sends one recovery — exactly once per transition
-- [ ] Node liveness DOWN/UP transitions notify via all enabled channels
-- [ ] Webhooks managed in the Alerts UI (add/edit/remove/enable/test); SMTP creds in env, email channel toggled in UI
-- [ ] Per-target: notify on/off (default off), email checkbox, webhook multi-select
-- [ ] Send failures are audited (notify.fail) and never affect check results or crash the scheduler
-- [ ] No channel configured/enabled → zero sends (fail-safe default)
-- [ ] Every send is audit-logged; tests green (SMTP via mock transport, webhook via local HTTP capture)
+- [x] Target DOWN sends one alert (after alertAfter threshold), UP sends one recovery — exactly once per transition
+- [x] Node liveness DOWN/UP transitions notify via all enabled channels
+- [x] Webhooks managed in the Alerts UI (add/edit/remove/enable/test); SMTP creds in env, email channel toggled in UI
+- [x] Per-target: notify on/off (default off), email checkbox, webhook multi-select
+- [x] Send failures are audited (notify.fail) and never affect check results or crash the scheduler
+- [x] No channel configured/enabled → zero sends (fail-safe default)
+- [x] Every send is audit-logged; tests green (SMTP via mock transport, webhook via local HTTP capture)
 
 ---
 

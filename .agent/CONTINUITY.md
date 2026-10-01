@@ -114,18 +114,19 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 |  |    ✓ Tests + browser verification |
 | 2026-10-01 | Completed feature: Live dashboard + Uptime tab (M2.2, PR #17). DoD all PASS; browser-verified dashboard/tab/modal. |
 | 2026-10-01 | Started feature: Notifications on state change (M2.3, Issue #18) on branch feature/18-notifications-state-change. Deep-plan validated: DB webhooks + Alerts UI, per-target channel pick, node transitions via all enabled channels, SMTP creds in env. |
-|  |    — Schema: Webhook + Setting models, PingTarget notify/notifyEmail + m-n webhooks; migration |
-|  |    — notify module: email (nodemailer) + webhook (fetch), audited, never throws |
-|  |    — Transition hooks: pingCheck (per-target routing) + nodeTest (all enabled channels) |
-|  |    — API: webhooks CRUD + test-send; targets accept channel fields |
-|  |    — UI: Alerts page (email toggle + webhook CRUD), Uptime form channel pick |
-|  |    — Tests + docs (.env.example, SPEC.md, PLAN.md) |
+|  |    ✓ Schema: Webhook + Setting models, PingTarget notify/notifyEmail + m-n webhooks; migration |
+|  |    ✓ notify module: email (nodemailer) + webhook (fetch), audited, never throws |
+|  |    ✓ Transition hooks: pingCheck (per-target routing) + nodeTest (all enabled channels) |
+|  |    ✓ API: webhooks CRUD + test-send; targets accept channel fields |
+|  |    ✓ UI: Alerts page (email toggle + webhook CRUD), Uptime form channel pick |
+|  |    ✓ Tests + docs (.env.example, SPEC.md, PLAN.md) |
 
 ## [DISCOVERIES]
 
 - 2026-09-28: Passkeys (WebAuthn) hard-require HTTPS + stable hostname — deployment must sit behind the operator's existing proxy/CA; RP_ID/ORIGIN env must match exactly (top M1 failure mode).
 - 2026-09-28: MASTER_KEY loss = unrecoverable secrets; backup documented in .env.example; app refuses to start in production without it.
 - 2026-09-28: Docker not available on the dev workstation — compose stack verified statically; runtime deploy verification must happen on the homelab.
+- 2026-10-01: zod `.partial()` on a schema with `.default()` fields re-applies the defaults to omitted keys — PATCH {enabled:false} silently wiped webhook names, and target PATCH reset intervalSec/alertAfter/enabled. Update schemas must be plain optionals. Regression-pinned in notify/ping tests.
 - 2026-09-30: Node TLS session resumption returns empty peer certificates — any fingerprint pinning must disable session caching (maxCachedSessions: 0).
 - 2026-09-30: PVE permissions: /api2/json/nodes works with minimal perms, but /cluster/resources needs the ACL on path "/" — and with Privilege Separation ON, the token needs its OWN ACL entry (user perms don't flow). PVEAuditor on / covers sync.
 - 2026-09-30: Virtual authenticators (CDP) don't persist credentials across browser tabs — WebAuthn e2e must run register+login in one tab session. Test DB cleanup must be scoped to test-created rows once real operator data exists.
