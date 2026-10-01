@@ -55,6 +55,19 @@ export type AuditEntry = {
 
 export type AuditPage = { entries: AuditEntry[]; nextBefore: string | null };
 
+export type PingTarget = {
+  id: string;
+  name: string;
+  host: string;
+  intervalSec: number;
+  alertAfter: number;
+  enabled: boolean;
+  status: "unknown" | "up" | "down";
+  consecutiveFailures: number;
+  lastLatencyMs: number | null;
+  lastCheckedAt: string | null;
+};
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     // Fastify 400s on content-type: application/json with an empty body

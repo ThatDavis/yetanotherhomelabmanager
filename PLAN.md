@@ -63,3 +63,4 @@
 - **Passkey authentication** (Milestone 1, 2026-09-30) — WebAuthn ceremonies, DB sessions, first-run registration, themed login, Settings passkey management (issue #8)
 - **Audit log viewer** (Milestone 1, 2026-09-30) — filterable/paginated audit read, expandable entries, auth.logout coverage (issue #10)
 - **Secrets management** (Milestone 1, 2026-09-30) — metadata list, guarded delete, master key rotation, container deploy verified (issue #12)
+- **Ping checks engine (M2.1)** (Milestone 2, 2026-10-01) — targets + scheduler + alertAfter state machine, dashboard panel, drawer portal fix (issue #14)

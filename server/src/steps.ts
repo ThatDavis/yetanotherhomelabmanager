@@ -1,7 +1,8 @@
-import type { Host, Node } from "@prisma/client";
+import type { Host, Node, PingTarget } from "@prisma/client";
 import { audit } from "./audit.js";
 import { prisma } from "./db.js";
 import { execOnHost, type OutputLine } from "./executor.js";
+import { ping } from "./ping.js";
 import { type PveResponse, pveData, pveRequest } from "./proxmox.js";
 import { loadSecret } from "./secrets.js";
 
@@ -333,5 +334,66 @@ export function nodeSync(node: Node): Promise<StepResult> {
     } catch (err) {
       return { ok: false, output: `connection failed: ${(err as Error).message}` };
     }
+  });
+}
+
+// ping.check — one probe against a PingTarget with the alertAfter state machine.
+// Down after `alertAfter` consecutive failures; up on first success.
+// State transitions are audited as ping.transition (notifications land in M2.3).
+export function pingCheck(target: PingTarget): Promise<StepResult> {
+  return runStep("ping.check", target.name, { host: target.host }, async () => {
+    // A delete can land any time before the writes below; P2003 (result FK) or
+    // P2025 (update on missing row) means "deleted mid-check" — not an error.
+    const current = await prisma.pingTarget.findUnique({ where: { id: target.id } });
+    if (!current) return { ok: true, output: "target deleted before check ran" };
+    target = current;
+
+    const res = await ping(target.host);
+
+    let status = target.status;
+    let failures = target.consecutiveFailures;
+    if (res.ok) {
+      failures = 0;
+      if (status !== "up") status = "up";
+    } else {
+      failures += 1;
+      if (failures >= target.alertAfter) status = "down";
+    }
+    const transitioned = status !== target.status;
+
+    try {
+      await prisma.checkResult.create({
+        data: { targetId: target.id, ok: res.ok, latencyMs: res.latencyMs, error: res.error },
+      });
+      await prisma.pingTarget.update({
+        where: { id: target.id },
+        data: {
+          status,
+          consecutiveFailures: failures,
+          lastLatencyMs: res.latencyMs,
+          lastCheckedAt: new Date(),
+        },
+      });
+    } catch {
+      return { ok: true, output: "target deleted mid-check" };
+    }
+
+    if (transitioned) {
+      await audit({
+        action: "ping.transition",
+        target: target.name,
+        ok: true,
+        output: `${target.status} → ${status}`,
+      });
+    }
+
+    const output = res.ok
+      ? `${target.host}: ok${res.latencyMs !== null ? ` (${res.latencyMs}ms)` : ""}`
+      : `${target.host}: FAIL (${failures}/${target.alertAfter}) ${res.error}`;
+    return {
+      ok: res.ok,
+      output,
+      data: { status, consecutiveFailures: failures, transitioned },
+    };
   });
 }

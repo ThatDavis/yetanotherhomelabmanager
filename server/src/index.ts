@@ -1,4 +1,5 @@
 import { buildServer } from "./app.js";
+import { startScheduler } from "./scheduler.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
@@ -8,6 +9,8 @@ if (!process.env.MASTER_KEY && process.env.NODE_ENV === "production") {
   console.error("MASTER_KEY is required in production. See .env.example.");
   process.exit(1);
 }
+
+await startScheduler();
 
 const app = buildServer();
 
