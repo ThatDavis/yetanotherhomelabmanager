@@ -34,6 +34,7 @@ afterEach(async () => {
     where: { job: { schedule: { name: { startsWith: "test-job-" } } } },
   });
   await prisma.job.deleteMany({ where: { schedule: { name: { startsWith: "test-job-" } } } });
+  await prisma.job.deleteMany({ where: { scheduleId: null } });
   await prisma.updateSchedule.deleteMany({ where: { name: { startsWith: "test-job-" } } });
   await prisma.host.deleteMany({ where: { alias: { startsWith: "test-jobhost-" } } });
   await prisma.auditEntry.deleteMany({ where: { target: { startsWith: "test-jobhost-" } } });

@@ -11,6 +11,7 @@ import { dashboardRoutes } from "./routes/dashboard.js";
 import { hostRoutes } from "./routes/hosts.js";
 import { jobRoutes } from "./routes/jobs.js";
 import { nodeRoutes } from "./routes/nodes.js";
+import { scheduleRoutes } from "./routes/schedules.js";
 import { secretRoutes } from "./routes/secrets.js";
 import { targetRoutes } from "./routes/targets.js";
 
@@ -37,6 +38,7 @@ export function buildServer(opts: BuildOptions = {}) {
   app.register(jobRoutes);
   app.register(nodeRoutes);
   app.register(secretRoutes);
+  app.register(scheduleRoutes);
   app.register(targetRoutes);
   const spaDir =
     opts.spaDir ?? process.env.SPA_DIR ?? path.resolve(import.meta.dirname, "../../web/dist");

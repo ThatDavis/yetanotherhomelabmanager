@@ -158,7 +158,7 @@ model Setting {
 // Proxmox API has no apt endpoint).
 model UpdateSchedule {
   id               String   @id @default(cuid())
-  name             String
+  name             String   @unique
   daysOfWeek       Int[] // 0=Sunday .. 6=Saturday
   timeOfDay        String // "HH:MM", server-local time
   osUpdates        Boolean  @default(true)

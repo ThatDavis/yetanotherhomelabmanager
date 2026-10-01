@@ -15,6 +15,12 @@ const createHostSchema = z.object({
   port: z.number().int().min(1).max(65535).default(22),
   username: z.string().min(1).max(64),
   notes: z.string().max(500).default(""),
+  self: z.boolean().default(false),
+});
+
+const updateHostSchema = z.object({
+  notes: z.string().max(500).optional(),
+  self: z.boolean().optional(),
 });
 
 export function hostRoutes(app: FastifyInstance) {
@@ -47,6 +53,27 @@ export function hostRoutes(app: FastifyInstance) {
       });
       return reply.code(409).send({ error: "alias already exists or invalid data" });
     }
+  });
+
+  app.patch("/api/hosts/:id", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const existing = await prisma.host.findUnique({ where: { id } });
+    if (!existing) return reply.code(404).send({ error: "host not found" });
+    const parsed = updateHostSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid host", details: parsed.error.issues });
+    }
+    const fields: { notes?: string; self?: boolean } = {};
+    if (parsed.data.notes !== undefined) fields.notes = parsed.data.notes;
+    if (parsed.data.self !== undefined) fields.self = parsed.data.self;
+    const host = await prisma.host.update({ where: { id }, data: fields });
+    await audit({
+      action: "host.update",
+      target: host.alias,
+      params: parsed.data,
+      ok: true,
+    });
+    return host;
   });
 
   app.delete("/api/hosts/:id", async (req, reply) => {

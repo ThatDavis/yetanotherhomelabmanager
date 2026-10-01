@@ -35,6 +35,10 @@ async function pump(): Promise<void> {
   running = true;
   try {
     await runJob(next);
+  } catch (err) {
+    // Steps return ok:false for expected failures; a throw here is a bug.
+    // Fail the job instead of dying with it stuck "running".
+    await fail(next, `runner: ${(err as Error).message}`);
   } finally {
     running = false;
     void pump();
@@ -77,22 +81,36 @@ async function runJob(jobId: string): Promise<void> {
   }
 
   const status = allOk ? "succeeded" : "failed";
-  await prisma.job.update({ where: { id: jobId }, data: { status, finishedAt: new Date() } });
+  await finishJob(jobId, status);
   if (job.trigger === "scheduled") {
-    await prisma.updateSchedule.update({
-      where: { id: schedule.id },
-      data: { lastRunAt: new Date() },
-    });
+    try {
+      await prisma.updateSchedule.update({
+        where: { id: schedule.id },
+        data: { lastRunAt: new Date() },
+      });
+    } catch {
+      // schedule deleted mid-job
+    }
   }
   emit(jobId, "status", { status });
 }
 
+// P2025 = the job row was deleted mid-run (same deleted-mid-check race as
+// ping.check, M2.1) — nothing left to update, so quiet success.
+async function finishJob(jobId: string, status: string, output?: string): Promise<void> {
+  try {
+    await prisma.job.update({
+      where: { id: jobId },
+      data: { status, finishedAt: new Date() },
+    });
+    if (output) emit(jobId, "status", { status, output });
+  } catch {
+    // deleted mid-job
+  }
+}
+
 async function fail(jobId: string, output: string): Promise<void> {
-  await prisma.job.update({
-    where: { id: jobId },
-    data: { status: "failed", finishedAt: new Date() },
-  });
-  emit(jobId, "status", { status: "failed", output });
+  await finishJob(jobId, "failed", output);
 }
 
 // --- SSE hub: one fan-out per job id ---
