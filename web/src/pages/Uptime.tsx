@@ -363,7 +363,7 @@ function TargetFormDrawer({
                     className="accent-[var(--color-accent)]"
                   />
                   <span className="font-mono text-xs text-subtext1">
-                    WEBHOOK // {w.name || w.url}
+                    {`WEBHOOK // ${w.name || w.url}`}
                   </span>
                 </label>
               ))
