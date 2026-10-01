@@ -5,7 +5,6 @@ import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
 import { StatusBadge } from "../components/StatusBadge";
 import { StatusStrip, stripBlocks } from "../components/StatusStrip";
-import { TargetsPanel } from "../components/TargetsPanel";
 
 const POLL_MS = 30_000;
 
@@ -174,10 +173,6 @@ export function Dashboard() {
             </table>
           )}
         </Panel>
-      </div>
-
-      <div className="mt-4">
-        <TargetsPanel />
       </div>
     </>
   );

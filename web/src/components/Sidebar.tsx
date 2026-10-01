@@ -6,6 +6,7 @@ import { type Status, StatusBadge } from "./StatusBadge";
 // Sections grow with milestones (docs/UI.md §1)
 const SECTIONS = [
   { to: "/", label: "Dashboard", glyph: "▚", end: true },
+  { to: "/uptime", label: "Uptime", glyph: "▲" },
   { to: "/nodes", label: "Nodes", glyph: "▦" },
   { to: "/guests", label: "Guests", glyph: "▤" },
   { to: "/jobs", label: "Jobs", glyph: "▶" },

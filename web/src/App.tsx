@@ -8,6 +8,7 @@ import { Jobs } from "./pages/Jobs";
 import { Login } from "./pages/Login";
 import { Nodes } from "./pages/Nodes";
 import { Settings } from "./pages/Settings";
+import { Uptime } from "./pages/Uptime";
 
 export const routes = [
   {
@@ -15,6 +16,7 @@ export const routes = [
     Component: AppShell,
     children: [
       { index: true, Component: Dashboard },
+      { path: "uptime", Component: Uptime },
       { path: "nodes", Component: Nodes },
       { path: "guests", Component: Guests },
       { path: "jobs", Component: Jobs },
