@@ -104,6 +104,13 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 |  |    ✓ Dashboard targets panel |
 |  |    ✓ Tests + scheduler verification |
 | 2026-10-01 | Completed feature: Ping checks engine (M2.1, PR #15). DoD all PASS; scheduler verified live. |
+| 2026-10-01 | Started feature: Live dashboard (M2.2, Issue #16) on branch feature/16-live-dashboard. |
+|  |    ✓ Node status fields + nodeTest recording |
+|  |    ✓ Scheduler node checks (5 min) |
+|  |    ✓ GET /api/dashboard aggregation |
+|  |    ✓ Cards + liveness + activity + strip grid |
+|  |    ✓ Sidebar chip live |
+|  |    ✓ Tests + browser verification |
 
 ## [DISCOVERIES]
 

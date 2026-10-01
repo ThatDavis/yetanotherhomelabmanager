@@ -52,7 +52,15 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**Live dashboard (M2.2)** — branch `feature/16-live-dashboard` (Milestone 2, issue #16)
+
+Sub-tasks:
+- [x] Node status fields + nodeTest recording
+- [x] Scheduler node checks (5 min)
+- [x] GET /api/dashboard aggregation
+- [x] Cards + liveness + activity + strip grid
+- [x] Sidebar chip live
+- [x] Tests + browser verification
 
 ## Completed Features
 
