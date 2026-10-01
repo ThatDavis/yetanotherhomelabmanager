@@ -128,11 +128,12 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ Tests + docs (.env.example, SPEC.md, PLAN.md) |
 | 2026-10-01 | Completed feature: Notifications on state change (M2.3, PR #19). DoD all PASS (server 56/56, web 12/12); browser-verified + live-restarted on local server. Milestone 2 complete. |
 | 2026-10-01 | Started Milestone 3: Updates. Started feature: Update scheduling (M3.1, Issue #20) on branch feature/20-update-scheduling. Deep-plan validated: PVE/PBS updated via SSH-as-Host, compose-only containers, job engine is core new primitive. |
-|  |    — Schema: UpdateSchedule + Job + JobStep models, Host.self flag, migration |
-|  |    — Steps: os.update (apt/dnf detect, reboot-pending) + container.update (compose projects), mocked-executor tests |
-|  |    — Job runner: persistent execution, per-host serialization, continue-on-failure, SSE endpoint |
-|  |    — Scheduler + API: auto-trigger weekly schedules, run-now with pre-flight, schedule CRUD |
-|  |    — UI: Updates page (schedule editor + pre-flight) + job center live status |
+|  |    ✓ Schema: UpdateSchedule + Job + JobStep models, Host.self flag, migration |
+|  |    ✓ Steps: os.update (apt/dnf detect, reboot-pending) + container.update (compose projects), mocked-executor tests |
+|  |    ✓ Job runner: persistent execution, per-host serialization, continue-on-failure, SSE endpoint |
+|  |    ✓ Scheduler + API: auto-trigger weekly schedules, run-now with pre-flight, schedule CRUD |
+|  |    ✓ UI: Updates page (schedule editor + pre-flight) + job center live status |
+|  |    ✓ Built: UpdateSchedule/Job/JobStep models (+Host.self); updates.ts (os.update apt/dnf + reboot probe, container.update compose-only); jobs.ts runner (serial queue, continue-on-failure, deleted-mid-job guard, per-job + global SSE); schedules API + weekly scheduler tick; Updates page, Jobs job center, toasts (server 74/74, web 12/12); browser-verified full flow incl. live SSE step + toast |
 
 ## [DISCOVERIES]
 
