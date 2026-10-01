@@ -342,14 +342,13 @@ export function nodeSync(node: Node): Promise<StepResult> {
 // State transitions are audited as ping.transition (notifications land in M2.3).
 export function pingCheck(target: PingTarget): Promise<StepResult> {
   return runStep("ping.check", target.name, { host: target.host }, async () => {
-    // Re-fetch: a target deleted after scheduling would otherwise FK-fail the insert
+    // A delete can land any time before the writes below; P2003 (result FK) or
+    // P2025 (update on missing row) means "deleted mid-check" — not an error.
     const current = await prisma.pingTarget.findUnique({ where: { id: target.id } });
     if (!current) return { ok: true, output: "target deleted before check ran" };
     target = current;
+
     const res = await ping(target.host);
-    await prisma.checkResult.create({
-      data: { targetId: target.id, ok: res.ok, latencyMs: res.latencyMs, error: res.error },
-    });
 
     let status = target.status;
     let failures = target.consecutiveFailures;
@@ -360,17 +359,24 @@ export function pingCheck(target: PingTarget): Promise<StepResult> {
       failures += 1;
       if (failures >= target.alertAfter) status = "down";
     }
-
     const transitioned = status !== target.status;
-    await prisma.pingTarget.update({
-      where: { id: target.id },
-      data: {
-        status,
-        consecutiveFailures: failures,
-        lastLatencyMs: res.latencyMs,
-        lastCheckedAt: new Date(),
-      },
-    });
+
+    try {
+      await prisma.checkResult.create({
+        data: { targetId: target.id, ok: res.ok, latencyMs: res.latencyMs, error: res.error },
+      });
+      await prisma.pingTarget.update({
+        where: { id: target.id },
+        data: {
+          status,
+          consecutiveFailures: failures,
+          lastLatencyMs: res.latencyMs,
+          lastCheckedAt: new Date(),
+        },
+      });
+    } catch {
+      return { ok: true, output: "target deleted mid-check" };
+    }
 
     if (transitioned) {
       await audit({
