@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 // Right slide-over drawer (docs/UI.md §4). Forms and detail views keep the list visible behind.
+// Portaled to body: clip-path on ancestors (chamfer panels) would otherwise trap
+// position:fixed inside their containing block.
 export function Drawer({
   title,
   open,
@@ -12,7 +15,9 @@ export function Drawer({
   onClose: () => void;
   children: ReactNode;
 }) {
-  return (
+  if (typeof document === "undefined") return null; // SSR renderToString
+
+  return createPortal(
     <div
       className={`fixed inset-0 z-40 transition-[visibility] duration-200 ${open ? "visible" : "invisible"}`}
       aria-hidden={!open}
@@ -40,6 +45,7 @@ export function Drawer({
         </div>
         <div className="flex-1 overflow-y-auto p-4">{children}</div>
       </aside>
-    </div>
+    </div>,
+    document.body,
   );
 }
