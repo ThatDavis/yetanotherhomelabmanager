@@ -52,7 +52,13 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**M2.3: Notifications on state change** (Issue #18, branch `feature/18-notifications-state-change`)
+- [ ] Schema: Webhook + Setting models, PingTarget notify/notifyEmail + m-n webhooks; migration
+- [ ] notify module: email (nodemailer, env SMTP) + webhook (fetch), audited, never throws
+- [ ] Transition hooks: pingCheck per-target routing; nodeTest all enabled channels
+- [ ] API: webhooks CRUD + test-send; targets accept notify/notifyEmail/webhookIds
+- [ ] UI: Alerts page (email toggle + webhook CRUD); Uptime form channel pick
+- [ ] Tests + docs (.env.example, SPEC.md)
 
 ## Completed Features
 

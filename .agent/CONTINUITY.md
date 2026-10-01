@@ -19,7 +19,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 Goal: Live status — ping checks, dashboards, health checks, alerting.
 - [x] M2.1: Ping checks engine (targets, scheduler, state machine, dashboard panel)
 - [x] M2.2: Live dashboard (cards + guest grid + status strip)
-- [ ] M2.3: Notifications (email + webhook on state change)
+- [ ] M2.3: Notifications (email + webhook on state change) (Issue #18, branch feature/18-notifications-state-change)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -28,6 +28,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 
 ## [DECISIONS]
 
+- 2026-10-01: Deep-plan validated M2.3 notifications. Key decisions: DB-backed webhooks (editable without container restart) + Alerts UI section; per-target channel pick (email checkbox + webhook multi-select, m-n relation); node transitions alert via all enabled channels; SMTP creds stay in env (email enable flag is a DB setting); per-target notify default OFF; send failures audited as notify.fail, never affect check StepResult.ok.
 - 2026-09-28: Initial stack — TypeScript/Node + Fastify + React/Tailwind + Postgres/Prisma; pnpm workspace; Biome; Vitest; Forgejo Actions; Docker Compose deploy.
 - 2026-09-28: Deep-plan validated M1. Key decisions: HTTPS+hostname from operator's existing reverse proxy (passkeys require it); standard append-only audit log (hash-chain deferred); master SSH keypair + encrypted secrets store; passkey-only auth; dockermigrate is reference-only for M5.
 - 2026-09-28: SSH now, agent later — executor must not leak SSH specifics.
@@ -112,6 +113,13 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 |  |    ✓ Sidebar chip live |
 |  |    ✓ Tests + browser verification |
 | 2026-10-01 | Completed feature: Live dashboard + Uptime tab (M2.2, PR #17). DoD all PASS; browser-verified dashboard/tab/modal. |
+| 2026-10-01 | Started feature: Notifications on state change (M2.3, Issue #18) on branch feature/18-notifications-state-change. Deep-plan validated: DB webhooks + Alerts UI, per-target channel pick, node transitions via all enabled channels, SMTP creds in env. |
+|  |    — Schema: Webhook + Setting models, PingTarget notify/notifyEmail + m-n webhooks; migration |
+|  |    — notify module: email (nodemailer) + webhook (fetch), audited, never throws |
+|  |    — Transition hooks: pingCheck (per-target routing) + nodeTest (all enabled channels) |
+|  |    — API: webhooks CRUD + test-send; targets accept channel fields |
+|  |    — UI: Alerts page (email toggle + webhook CRUD), Uptime form channel pick |
+|  |    — Tests + docs (.env.example, SPEC.md, PLAN.md) |
 
 ## [DISCOVERIES]
 

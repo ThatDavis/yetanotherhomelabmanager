@@ -61,6 +61,21 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 
 ---
 
+## Milestone 2 — Monitoring
+
+#### Feature: Notifications on state change (M2.3)
+**Description:** One notification per status transition — ping targets DOWN (after alertAfter) and UP recovery, node liveness DOWN/UP. Channels: email via env-configured SMTP relay and DB-backed webhooks (editable without container restart). Per-target channel pick; node transitions go to all enabled channels.
+**Acceptance Criteria:**
+- [ ] Target DOWN sends one alert (after alertAfter threshold), UP sends one recovery — exactly once per transition
+- [ ] Node liveness DOWN/UP transitions notify via all enabled channels
+- [ ] Webhooks managed in the Alerts UI (add/edit/remove/enable/test); SMTP creds in env, email channel toggled in UI
+- [ ] Per-target: notify on/off (default off), email checkbox, webhook multi-select
+- [ ] Send failures are audited (notify.fail) and never affect check results or crash the scheduler
+- [ ] No channel configured/enabled → zero sends (fail-safe default)
+- [ ] Every send is audit-logged; tests green (SMTP via mock transport, webhook via local HTTP capture)
+
+---
+
 ## Future Milestones
 
 - **M2 — Monitoring:** PVE/PBS dashboards; health checks (liveness, service endpoints, guest agent); alerting.
