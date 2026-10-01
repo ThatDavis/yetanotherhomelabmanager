@@ -99,6 +99,7 @@ test("targets CRUD via API, audited", async () => {
 
   const audits = await prisma.auditEntry.findMany({
     where: { target: "pingtest-crud", action: { startsWith: "target." } },
+    orderBy: { at: "asc" },
   });
   expect(audits.map((a) => a.action)).toEqual([
     "target.register",
