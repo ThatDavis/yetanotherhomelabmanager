@@ -4,6 +4,7 @@ import fastifyCookie from "@fastify/cookie";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { authGuard } from "./auth.js";
+import { alertRoutes } from "./routes/alerts.js";
 import { auditRoutes } from "./routes/audit.js";
 import { authRoutes } from "./routes/auth.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
@@ -28,6 +29,7 @@ export function buildServer(opts: BuildOptions = {}) {
 
   if (opts.auth !== false) app.addHook("preHandler", authGuard);
   app.register(authRoutes);
+  app.register(alertRoutes);
   app.register(auditRoutes);
   app.register(dashboardRoutes);
   app.register(hostRoutes);

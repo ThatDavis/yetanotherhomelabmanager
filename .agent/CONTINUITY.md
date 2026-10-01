@@ -15,11 +15,11 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - [x] Guest host registration: master SSH keypair + bootstrap script; SSH executor
 - [x] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
 
-### Milestone 2: Monitoring (In Progress)
+### Milestone 2: Monitoring (Complete)
 Goal: Live status — ping checks, dashboards, health checks, alerting.
 - [x] M2.1: Ping checks engine (targets, scheduler, state machine, dashboard panel)
 - [x] M2.2: Live dashboard (cards + guest grid + status strip)
-- [ ] M2.3: Notifications (email + webhook on state change)
+- [x] M2.3: Notifications (email + webhook on state change) (Issue #18, branch feature/18-notifications-state-change)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -28,6 +28,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 
 ## [DECISIONS]
 
+- 2026-10-01: Deep-plan validated M2.3 notifications. Key decisions: DB-backed webhooks (editable without container restart) + Alerts UI section; per-target channel pick (email checkbox + webhook multi-select, m-n relation); node transitions alert via all enabled channels; SMTP creds stay in env (email enable flag is a DB setting); per-target notify default OFF; send failures audited as notify.fail, never affect check StepResult.ok.
 - 2026-09-28: Initial stack — TypeScript/Node + Fastify + React/Tailwind + Postgres/Prisma; pnpm workspace; Biome; Vitest; Forgejo Actions; Docker Compose deploy.
 - 2026-09-28: Deep-plan validated M1. Key decisions: HTTPS+hostname from operator's existing reverse proxy (passkeys require it); standard append-only audit log (hash-chain deferred); master SSH keypair + encrypted secrets store; passkey-only auth; dockermigrate is reference-only for M5.
 - 2026-09-28: SSH now, agent later — executor must not leak SSH specifics.
@@ -112,12 +113,21 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 |  |    ✓ Sidebar chip live |
 |  |    ✓ Tests + browser verification |
 | 2026-10-01 | Completed feature: Live dashboard + Uptime tab (M2.2, PR #17). DoD all PASS; browser-verified dashboard/tab/modal. |
+| 2026-10-01 | Started feature: Notifications on state change (M2.3, Issue #18) on branch feature/18-notifications-state-change. Deep-plan validated: DB webhooks + Alerts UI, per-target channel pick, node transitions via all enabled channels, SMTP creds in env. |
+|  |    ✓ Schema: Webhook + Setting models, PingTarget notify/notifyEmail + m-n webhooks; migration |
+|  |    ✓ notify module: email (nodemailer) + webhook (fetch), audited, never throws |
+|  |    ✓ Transition hooks: pingCheck (per-target routing) + nodeTest (all enabled channels) |
+|  |    ✓ API: webhooks CRUD + test-send; targets accept channel fields |
+|  |    ✓ UI: Alerts page (email toggle + webhook CRUD), Uptime form channel pick |
+|  |    ✓ Tests + docs (.env.example, SPEC.md, PLAN.md) |
+| 2026-10-01 | Completed feature: Notifications on state change (M2.3, PR #19). DoD all PASS (server 56/56, web 12/12); browser-verified + live-restarted on local server. Milestone 2 complete. |
 
 ## [DISCOVERIES]
 
 - 2026-09-28: Passkeys (WebAuthn) hard-require HTTPS + stable hostname — deployment must sit behind the operator's existing proxy/CA; RP_ID/ORIGIN env must match exactly (top M1 failure mode).
 - 2026-09-28: MASTER_KEY loss = unrecoverable secrets; backup documented in .env.example; app refuses to start in production without it.
 - 2026-09-28: Docker not available on the dev workstation — compose stack verified statically; runtime deploy verification must happen on the homelab.
+- 2026-10-01: zod `.partial()` on a schema with `.default()` fields re-applies the defaults to omitted keys — PATCH {enabled:false} silently wiped webhook names, and target PATCH reset intervalSec/alertAfter/enabled. Update schemas must be plain optionals. Regression-pinned in notify/ping tests.
 - 2026-09-30: Node TLS session resumption returns empty peer certificates — any fingerprint pinning must disable session caching (maxCachedSessions: 0).
 - 2026-09-30: PVE permissions: /api2/json/nodes works with minimal perms, but /cluster/resources needs the ACL on path "/" — and with Privilege Separation ON, the token needs its OWN ACL entry (user perms don't flow). PVEAuditor on / covers sync.
 - 2026-09-30: Virtual authenticators (CDP) don't persist credentials across browser tabs — WebAuthn e2e must run register+login in one tab session. Test DB cleanup must be scoped to test-created rows once real operator data exists.
@@ -153,3 +163,6 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 
 ### Live dashboard + Uptime tab (M2.2, 2026-10-01)
 - Dashboard went live: summary cards, node liveness (scheduler-driven node tests), recent activity, target strips; config split into the Uptime tab (uptime %, detail modal with SVG latency graph); sidebar chip now real worst-status. Immediately surfaced a real signal (defiant DOWN).
+
+### Notifications on state change (M2.3, 2026-10-01)
+- Exactly one alert per transition (target down/recovery, node down/up) to email (env SMTP, nodemailer) and/or DB-backed webhooks (JSON POST, editable without restart, per-target channel pick). Sends audited (notify.send/fail), never affect checks; unknown→up first-check is audited but not alerted. Fixed pre-existing zod .partial() defaults-wipe-on-PATCH bug (regression-pinned). Browser-verified; closes Milestone 2.

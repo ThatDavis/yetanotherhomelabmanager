@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { AppShell } from "./components/AppShell";
+import { Alerts } from "./pages/Alerts";
 import { Audit } from "./pages/Audit";
 import { Dashboard } from "./pages/Dashboard";
 import { Guests } from "./pages/Guests";
@@ -17,6 +18,7 @@ export const routes = [
     children: [
       { index: true, Component: Dashboard },
       { path: "uptime", Component: Uptime },
+      { path: "alerts", Component: Alerts },
       { path: "nodes", Component: Nodes },
       { path: "guests", Component: Guests },
       { path: "jobs", Component: Jobs },

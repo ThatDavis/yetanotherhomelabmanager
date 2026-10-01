@@ -55,6 +55,22 @@ export type AuditEntry = {
 
 export type AuditPage = { entries: AuditEntry[]; nextBefore: string | null };
 
+export type Webhook = {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  createdAt: string;
+};
+
+export type ChannelResult = { channel: string; ok: boolean; error?: string };
+
+export type AlertsConfig = {
+  emailEnabled: boolean;
+  smtpConfigured: boolean;
+  webhooks: Webhook[];
+};
+
 export type PingTarget = {
   id: string;
   name: string;
@@ -66,6 +82,9 @@ export type PingTarget = {
   consecutiveFailures: number;
   lastLatencyMs: number | null;
   lastCheckedAt: string | null;
+  notify: boolean;
+  notifyEmail: boolean;
+  webhooks: Webhook[];
 };
 
 export type DashboardData = {

@@ -23,9 +23,10 @@
 ## Future Milestones
 
 ### Milestone 2: Monitoring
-- [ ] PVE/PBS status dashboards (node health, guest states)
-- [ ] Health checks: basic liveness, service/endpoint checks, QEMU guest agent checks
-- [ ] Alerting on failed checks
+**Status:** Complete (2026-10-01)
+- [x] PVE/PBS status dashboards (node health, guest states)
+- [x] Health checks: basic liveness, service/endpoint checks, QEMU guest agent checks
+- [x] Alerting on failed checks
 
 ### Milestone 3: Updates
 - [ ] Update scheduling for PVE/PBS host OS (apt), guest OS (Debian/RHEL/mixed via SSH), and containers in guests
@@ -65,3 +66,4 @@
 - **Secrets management** (Milestone 1, 2026-09-30) — metadata list, guarded delete, master key rotation, container deploy verified (issue #12)
 - **Ping checks engine (M2.1)** (Milestone 2, 2026-10-01) — targets + scheduler + alertAfter state machine, dashboard panel, drawer portal fix (issue #14)
 - **Live dashboard + Uptime tab (M2.2)** (Milestone 2, 2026-10-01) — live cards/liveness/strips, Uptime config tab, detail modal with latency graph (issue #16)
+- **Notifications on state change (M2.3)** (Milestone 2, 2026-10-01) — email (SMTP) + DB webhooks, per-target channel pick, Alerts page, audited sends; also fixed zod PATCH defaults bug (issue #18) — **Milestone 2 complete**
