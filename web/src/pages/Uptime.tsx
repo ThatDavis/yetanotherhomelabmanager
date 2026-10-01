@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { type AuditEntry, api, type PingTarget } from "../api";
+import { type AlertsConfig, type AuditEntry, api, type PingTarget, type Webhook } from "../api";
 import { Drawer } from "../components/Drawer";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
@@ -173,6 +173,16 @@ function DetailModal({ target, onClose }: { target: TargetWithMeta | null; onClo
             <StatusBadge status={STATUS_MAP[detail.status]} label={detail.status.toUpperCase()} />
             <span className="font-mono text-xs text-subtext0">
               {detail.host} · every {detail.intervalSec}s · alert after {detail.alertAfter}
+              {detail.notify
+                ? ` · alerts: ${
+                    [
+                      detail.notifyEmail ? "email" : null,
+                      ...detail.webhooks.map((w) => w.name || "webhook"),
+                    ]
+                      .filter(Boolean)
+                      .join(" + ") || "no channels"
+                  }`
+                : " · alerts: off"}
             </span>
           </div>
 
@@ -235,6 +245,10 @@ function TargetFormDrawer({
 }) {
   const editing = target !== undefined;
   const [form, setForm] = useState({ name: "", host: "", intervalSec: "60", alertAfter: "3" });
+  const [notify, setNotify] = useState(false);
+  const [notifyEmail, setNotifyEmail] = useState(false);
+  const [webhookIds, setWebhookIds] = useState<string[]>([]);
+  const [allWebhooks, setAllWebhooks] = useState<Webhook[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -249,7 +263,13 @@ function TargetFormDrawer({
             }
           : { name: "", host: "", intervalSec: "60", alertAfter: "3" },
       );
+      setNotify(target?.notify ?? false);
+      setNotifyEmail(target?.notifyEmail ?? false);
+      setWebhookIds(target?.webhooks.map((w) => w.id) ?? []);
       setError(null);
+      api<AlertsConfig>("/alerts")
+        .then((c) => setAllWebhooks(c.webhooks))
+        .catch(() => {});
     }
   }, [open, target]);
 
@@ -262,6 +282,9 @@ function TargetFormDrawer({
         host: form.host,
         intervalSec: Number(form.intervalSec),
         alertAfter: Number(form.alertAfter),
+        notify,
+        notifyEmail,
+        webhookIds,
       };
       if (editing) {
         await api(`/targets/${target.id}`, { method: "PATCH", body: JSON.stringify(body) });
@@ -299,6 +322,55 @@ function TargetFormDrawer({
             />
           </label>
         ))}
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={notify}
+            onChange={(e) => setNotify(e.target.checked)}
+            className="accent-[var(--color-accent)]"
+          />
+          <span className="micro-label">NOTIFY ON STATE CHANGE</span>
+        </label>
+
+        {notify && (
+          <div className="flex flex-col gap-2 border border-surface1 bg-crust/50 p-3">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.checked)}
+                className="accent-[var(--color-accent)]"
+              />
+              <span className="font-mono text-xs text-subtext1">EMAIL (SMTP channel)</span>
+            </label>
+            {allWebhooks.length === 0 ? (
+              <span className="font-mono text-xs text-subtext0">
+                No webhooks configured — add them in Alerts.
+              </span>
+            ) : (
+              allWebhooks.map((w) => (
+                <label key={w.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={webhookIds.includes(w.id)}
+                    onChange={(e) =>
+                      setWebhookIds(
+                        e.target.checked
+                          ? [...webhookIds, w.id]
+                          : webhookIds.filter((id) => id !== w.id),
+                      )
+                    }
+                    className="accent-[var(--color-accent)]"
+                  />
+                  <span className="font-mono text-xs text-subtext1">
+                    WEBHOOK // {w.name || w.url}
+                  </span>
+                </label>
+              ))
+            )}
+          </div>
+        )}
+
         {error && <p className="font-mono text-sm text-status-error">{error}</p>}
         <button
           type="submit"

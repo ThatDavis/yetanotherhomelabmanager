@@ -7,6 +7,7 @@ import { type Status, StatusBadge } from "./StatusBadge";
 const SECTIONS = [
   { to: "/", label: "Dashboard", glyph: "▚", end: true },
   { to: "/uptime", label: "Uptime", glyph: "▲" },
+  { to: "/alerts", label: "Alerts", glyph: "⚠" },
   { to: "/nodes", label: "Nodes", glyph: "▦" },
   { to: "/guests", label: "Guests", glyph: "▤" },
   { to: "/jobs", label: "Jobs", glyph: "▶" },

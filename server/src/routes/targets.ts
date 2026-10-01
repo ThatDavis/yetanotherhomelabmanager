@@ -52,7 +52,7 @@ export function targetRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const target = await prisma.pingTarget.findUnique({
       where: { id },
-      include: { results: { orderBy: { at: "desc" }, take: 50 } },
+      include: { results: { orderBy: { at: "desc" }, take: 50 }, webhooks: true },
     });
     if (!target) return reply.code(404).send({ error: "target not found" });
     const transitions = await prisma.auditEntry.findMany({

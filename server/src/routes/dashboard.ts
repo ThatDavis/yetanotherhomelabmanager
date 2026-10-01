@@ -6,7 +6,7 @@ export function dashboardRoutes(app: FastifyInstance) {
   app.get("/api/dashboard", async () => {
     const [targets, nodes, guestCounts, recentAudit] = await Promise.all([
       prisma.pingTarget.findMany({
-        include: { results: { orderBy: { at: "desc" }, take: 10 } },
+        include: { results: { orderBy: { at: "desc" }, take: 10 }, webhooks: true },
         orderBy: { name: "asc" },
       }),
       prisma.node.findMany({
