@@ -23,9 +23,10 @@
 ## Future Milestones
 
 ### Milestone 2: Monitoring
-- [ ] PVE/PBS status dashboards (node health, guest states)
-- [ ] Health checks: basic liveness, service/endpoint checks, QEMU guest agent checks
-- [ ] Alerting on failed checks
+**Status:** Complete (2026-10-01)
+- [x] PVE/PBS status dashboards (node health, guest states)
+- [x] Health checks: basic liveness, service/endpoint checks, QEMU guest agent checks
+- [x] Alerting on failed checks
 
 ### Milestone 3: Updates
 - [ ] Update scheduling for PVE/PBS host OS (apt), guest OS (Debian/RHEL/mixed via SSH), and containers in guests
@@ -52,13 +53,7 @@
 
 ## Active Feature
 
-**M2.3: Notifications on state change** (Issue #18, branch `feature/18-notifications-state-change`)
-- [x] Schema: Webhook + Setting models, PingTarget notify/notifyEmail + m-n webhooks; migration
-- [x] notify module: email (nodemailer, env SMTP) + webhook (fetch), audited, never throws
-- [x] Transition hooks: pingCheck per-target routing; nodeTest all enabled channels
-- [x] API: webhooks CRUD + test-send; targets accept notify/notifyEmail/webhookIds
-- [x] UI: Alerts page (email toggle + webhook CRUD); Uptime form channel pick
-- [x] Tests + docs (.env.example, SPEC.md)
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
@@ -71,3 +66,4 @@
 - **Secrets management** (Milestone 1, 2026-09-30) — metadata list, guarded delete, master key rotation, container deploy verified (issue #12)
 - **Ping checks engine (M2.1)** (Milestone 2, 2026-10-01) — targets + scheduler + alertAfter state machine, dashboard panel, drawer portal fix (issue #14)
 - **Live dashboard + Uptime tab (M2.2)** (Milestone 2, 2026-10-01) — live cards/liveness/strips, Uptime config tab, detail modal with latency graph (issue #16)
+- **Notifications on state change (M2.3)** (Milestone 2, 2026-10-01) — email (SMTP) + DB webhooks, per-target channel pick, Alerts page, audited sends; also fixed zod PATCH defaults bug (issue #18) — **Milestone 2 complete**

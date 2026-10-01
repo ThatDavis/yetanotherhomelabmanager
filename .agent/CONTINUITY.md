@@ -15,11 +15,11 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - [x] Guest host registration: master SSH keypair + bootstrap script; SSH executor
 - [x] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
 
-### Milestone 2: Monitoring (In Progress)
+### Milestone 2: Monitoring (Complete)
 Goal: Live status — ping checks, dashboards, health checks, alerting.
 - [x] M2.1: Ping checks engine (targets, scheduler, state machine, dashboard panel)
 - [x] M2.2: Live dashboard (cards + guest grid + status strip)
-- [ ] M2.3: Notifications (email + webhook on state change) (Issue #18, branch feature/18-notifications-state-change)
+- [x] M2.3: Notifications (email + webhook on state change) (Issue #18, branch feature/18-notifications-state-change)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -120,6 +120,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 |  |    ✓ API: webhooks CRUD + test-send; targets accept channel fields |
 |  |    ✓ UI: Alerts page (email toggle + webhook CRUD), Uptime form channel pick |
 |  |    ✓ Tests + docs (.env.example, SPEC.md, PLAN.md) |
+| 2026-10-01 | Completed feature: Notifications on state change (M2.3, PR #19). DoD all PASS (server 56/56, web 12/12); browser-verified + live-restarted on local server. Milestone 2 complete. |
 
 ## [DISCOVERIES]
 
@@ -162,3 +163,6 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 
 ### Live dashboard + Uptime tab (M2.2, 2026-10-01)
 - Dashboard went live: summary cards, node liveness (scheduler-driven node tests), recent activity, target strips; config split into the Uptime tab (uptime %, detail modal with SVG latency graph); sidebar chip now real worst-status. Immediately surfaced a real signal (defiant DOWN).
+
+### Notifications on state change (M2.3, 2026-10-01)
+- Exactly one alert per transition (target down/recovery, node down/up) to email (env SMTP, nodemailer) and/or DB-backed webhooks (JSON POST, editable without restart, per-target channel pick). Sends audited (notify.send/fail), never affect checks; unknown→up first-check is audited but not alerted. Fixed pre-existing zod .partial() defaults-wipe-on-PATCH bug (regression-pinned). Browser-verified; closes Milestone 2.
