@@ -32,9 +32,11 @@ export function StatusStrip({ blocks, total }: { blocks: StripBlock[]; total: nu
   return (
     <div className="flex gap-0.5" title="last checks (oldest → newest)">
       {Array.from({ length: empty }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: strip blocks are positional, never reordered
         <span key={`e${i}`} className="h-3 w-2 bg-surface1" />
       ))}
       {blocks.map((b, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: strip blocks are positional, never reordered
         <span key={i} className={`h-3 w-2 ${STRIP_COLORS[b]}`} />
       ))}
     </div>
