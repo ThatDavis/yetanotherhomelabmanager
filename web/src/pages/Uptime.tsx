@@ -178,6 +178,7 @@ function DetailDrawer({ target, onClose }: { target: TargetWithMeta | null; onCl
           <table className="mb-4 w-full border-collapse font-mono text-xs">
             <tbody>
               {detail.results.map((r, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: results are append-only, never reordered
                 <tr key={i} className="border-b border-surface0 text-subtext1">
                   <td className="py-1 pr-3 whitespace-nowrap">
                     {new Date(r.at).toLocaleTimeString()}
