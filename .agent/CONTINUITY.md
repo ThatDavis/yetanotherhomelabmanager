@@ -6,7 +6,7 @@
 
 ## [PLANS]
 
-### Milestone 1: Foundation (In Progress)
+### Milestone 1: Foundation (Complete)
 Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host registration, inventory view, full audit trail, Docker Compose deploy.
 - [x] Passkey (WebAuthn) auth for single operator
 - [x] Audit log (append-only; all mutations + external calls; UI viewer)
@@ -15,11 +15,11 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 - [x] Guest host registration: master SSH keypair + bootstrap script; SSH executor
 - [x] App shell (branch feature/app-shell): themed sidebar shell, router, dashboard, production SPA serving
 
-### Future Milestones
-- M2 Monitoring: dashboards; liveness/service/guest-agent health checks; alerting
-- M3 Updates: scheduling (host OS, guest OS, in-guest containers); reboot orchestration; post-update verification; email reports (external SMTP)
-- M4 Backups: PBS status + stale alerts; automated restore testing (restore to scratch guest, verify boot)
-- M5 Migration: cross-node container migration (dockermigrate-informed, reimplemented)
+### Milestone 2: Monitoring (In Progress)
+Goal: Live status — ping checks, dashboards, health checks, alerting.
+- [x] M2.1: Ping checks engine (targets, scheduler, state machine, dashboard panel)
+- [ ] M2.2: Live dashboard (cards + guest grid + status strip)
+- [ ] M2.3: Notifications (email + webhook on state change)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -96,6 +96,13 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 |  |    ✓ Settings SECRETS panel (typed-confirm rotation) |
 |  |    ✓ Tests + rotation mutex + serial test pool |
 | 2026-09-30 | Completed feature: Secrets management (PR #13). DoD all PASS; container deployment verified end-to-end (podman). |
+| 2026-10-01 | Started Milestone 2: Monitoring. Started feature: Ping checks engine (Issue #14) on branch feature/14-ping-checks. |
+|  |    ✓ PingTarget + CheckResult models |
+|  |    ✓ ping executor + ping.check step (alertAfter state machine) |
+|  |    ✓ In-process scheduler + retention pruning |
+|  |    ✓ Targets CRUD API (audited) |
+|  |    ✓ Dashboard targets panel |
+|  |    ✓ Tests + scheduler verification |
 
 ## [DISCOVERIES]
 

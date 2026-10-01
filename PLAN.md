@@ -52,7 +52,15 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**Ping checks engine (M2.1)** — branch `feature/14-ping-checks` (Milestone 2, issue #14)
+
+Sub-tasks:
+- [x] PingTarget + CheckResult models
+- [x] ping executor + ping.check step (alertAfter state machine)
+- [x] In-process scheduler + retention pruning
+- [x] Targets CRUD API (audited)
+- [x] Dashboard targets panel
+- [x] Tests + scheduler verification
 
 ## Completed Features
 
