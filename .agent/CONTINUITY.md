@@ -103,6 +103,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 |  |    ✓ Targets CRUD API (audited) |
 |  |    ✓ Dashboard targets panel |
 |  |    ✓ Tests + scheduler verification |
+| 2026-10-01 | Completed feature: Ping checks engine (M2.1, PR #15). DoD all PASS; scheduler verified live. |
 
 ## [DISCOVERIES]
 
@@ -138,3 +139,6 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 
 ### Secrets management (2026-09-30)
 - Secrets list (metadata only), guarded delete, master key rotation with typed-confirm UI; rotateMasterKey redesigned with oldKeyHex + mutex after the rotate-back-impossible bug stranded secrets; test suite serialized (singleFork) after repeated cross-worker DB races. Container deployment verified end-to-end via podman.
+
+### Ping checks engine (M2.1, 2026-10-01)
+- Manual ping targets with per-target interval + alertAfter; in-process staggered scheduler; state machine with audited transitions; dashboard management panel. Live-verified scheduling; fixed deleted-mid-check race and clip-path drawer trap (portal).
