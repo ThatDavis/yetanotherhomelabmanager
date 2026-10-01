@@ -9,6 +9,7 @@ import { auditRoutes } from "./routes/audit.js";
 import { authRoutes } from "./routes/auth.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
 import { hostRoutes } from "./routes/hosts.js";
+import { jobRoutes } from "./routes/jobs.js";
 import { nodeRoutes } from "./routes/nodes.js";
 import { secretRoutes } from "./routes/secrets.js";
 import { targetRoutes } from "./routes/targets.js";
@@ -33,6 +34,7 @@ export function buildServer(opts: BuildOptions = {}) {
   app.register(auditRoutes);
   app.register(dashboardRoutes);
   app.register(hostRoutes);
+  app.register(jobRoutes);
   app.register(nodeRoutes);
   app.register(secretRoutes);
   app.register(targetRoutes);
