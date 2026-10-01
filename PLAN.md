@@ -29,7 +29,8 @@
 - [x] Alerting on failed checks
 
 ### Milestone 3: Updates
-- [ ] Update scheduling for PVE/PBS host OS (apt), guest OS (Debian/RHEL/mixed via SSH), and containers in guests
+**Status:** In Progress (started 2026-10-01)
+- [ ] **M3.1: Update scheduling** (Issue #20, branch `feature/20-update-scheduling`) — weekly schedules, os.update (apt/dnf) + container.update (compose), job engine with SSE live status, run-now with pre-flight; see docs/SPEC.md §Milestone 3
 - [ ] Reboot orchestration
 - [ ] Post-update verification (health checks before/after)
 - [ ] Email reports after jobs complete (external SMTP relay)
@@ -53,7 +54,7 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+**M3.1: Update scheduling** — Issue #20, branch `feature/20-update-scheduling`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 
 ## Completed Features
 

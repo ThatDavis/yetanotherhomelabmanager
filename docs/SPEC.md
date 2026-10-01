@@ -1,6 +1,6 @@
 # Specification — Yet Another Home Lab Manager
 
-> Last updated: 2026-09-28
+> Last updated: 2026-10-01
 
 ## Overview
 
@@ -76,6 +76,23 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 
 ---
 
+## Milestone 3 — Updates
+
+#### Feature: Update scheduling (M3.1)
+**Description:** Operator defines update schedules (weekly day(s) + time) scoped to registered hosts — including PVE/PBS nodes registered as SSH hosts for this purpose. A scheduler triggers jobs automatically; manual run-now is available behind a pre-flight summary. Jobs run as background jobs with live status, per-step audit, and per-host failure isolation. Covers OS updates (apt/dnf auto-detected) and Docker container updates (compose projects). Reboot orchestration (M3.2), post-update verification (M3.3), and email reports (M3.4) build on this job engine.
+**Acceptance Criteria:**
+- [ ] Schedule CRUD: weekly day(s)-of-week + time, host scope multi-select, separate toggles for OS updates and container updates, enabled flag
+- [ ] Scheduler auto-triggers jobs at the scheduled time; manual "run now" gated by a pre-flight summary (what will happen, on which targets — UI.md §5)
+- [ ] `os.update` auto-detects package manager (apt/dnf), applies updates, returns combined tagged output; failure on one host does not stop the job
+- [ ] `container.update` updates Docker Compose projects on scoped hosts; standalone containers are listed but untouched
+- [ ] Job engine: persistent Job/JobStep records, job-center UI per UI.md §5, live status via SSE (poll fallback), toast on completion/failure
+- [ ] Reboot-pending is surfaced per host in job results (reboot-required flag / needs-restarting) — reboot itself is M3.2
+- [ ] `self` flag on Host marks the host that runs the app; UI warns that its reboot is deferred to M3.2 (resolves the self-host open question by design: works either way)
+- [ ] Every job and step is audited via the existing step contract
+- [ ] Tests green (steps via mocked executor, scheduler trigger, API)
+
+---
+
 ## Future Milestones
 
 - **M2 — Monitoring:** PVE/PBS dashboards; health checks (liveness, service endpoints, guest agent); alerting.
@@ -95,5 +112,5 @@ Full acceptance criteria will be defined when each milestone starts.
 ## Open Questions
 
 - [ ] Exact Proxmox API token minimal privilege set per feature — Owner: operator, Due: M1 implementation
-- [ ] Which PVE node hosts the app itself (update orchestration must handle self-host node) — Owner: operator, Due: before M3
+- [x] Which PVE node hosts the app itself — resolved 2026-10-01 by design: `self` flag on Host marks the app host; reboot deferral lands in M3.2 (works whether the app lives on a PVE node or not)
 - [ ] Tamper-evidence (hash-chained audit log) deferred — revisit if threat model changes — Due: TBD

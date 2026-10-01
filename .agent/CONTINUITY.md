@@ -21,12 +21,18 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 - [x] M2.2: Live dashboard (cards + guest grid + status strip)
 - [x] M2.3: Notifications (email + webhook on state change) (Issue #18, branch feature/18-notifications-state-change)
 
+### Milestone 3: Updates (In Progress)
+Goal: Scheduled updates with reboot orchestration, post-update verification, email reports.
+- [ ] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
+
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
-- [ ] Which PVE node hosts the app; self-update/reboot handling (before M3)
+- [x] Which PVE node hosts the app — resolved 2026-10-01 by design: `self` flag on Host; reboot deferral in M3.2
 - [ ] Restore-test scratch guest placement (before M4)
 
 ## [DECISIONS]
+
+- 2026-10-01: Deep-plan validated M3.1 update scheduling. Key decisions: PVE/PBS host OS updated via SSH (Proxmox API has no apt endpoint) — operator registers nodes as Hosts, no SSH fields on Node model; containers-in-guests included in M3.1 scope (docker compose projects only, standalone untouched); job engine (Job/JobStep + in-process runner + SSE/poll) is the core new primitive; schedules are weekly day(s)+time with OS/container toggles; per-host failure isolation + reboot-pending surfaced (reboot is M3.2); self-host open question resolved by `self` flag on Host.
 
 - 2026-10-01: Deep-plan validated M2.3 notifications. Key decisions: DB-backed webhooks (editable without container restart) + Alerts UI section; per-target channel pick (email checkbox + webhook multi-select, m-n relation); node transitions alert via all enabled channels; SMTP creds stay in env (email enable flag is a DB setting); per-target notify default OFF; send failures audited as notify.fail, never affect check StepResult.ok.
 - 2026-09-28: Initial stack — TypeScript/Node + Fastify + React/Tailwind + Postgres/Prisma; pnpm workspace; Biome; Vitest; Forgejo Actions; Docker Compose deploy.
@@ -121,6 +127,12 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 |  |    ✓ UI: Alerts page (email toggle + webhook CRUD), Uptime form channel pick |
 |  |    ✓ Tests + docs (.env.example, SPEC.md, PLAN.md) |
 | 2026-10-01 | Completed feature: Notifications on state change (M2.3, PR #19). DoD all PASS (server 56/56, web 12/12); browser-verified + live-restarted on local server. Milestone 2 complete. |
+| 2026-10-01 | Started Milestone 3: Updates. Started feature: Update scheduling (M3.1, Issue #20) on branch feature/20-update-scheduling. Deep-plan validated: PVE/PBS updated via SSH-as-Host, compose-only containers, job engine is core new primitive. |
+|  |    — Schema: UpdateSchedule + Job + JobStep models, Host.self flag, migration |
+|  |    — Steps: os.update (apt/dnf detect, reboot-pending) + container.update (compose projects), mocked-executor tests |
+|  |    — Job runner: persistent execution, per-host serialization, continue-on-failure, SSE endpoint |
+|  |    — Scheduler + API: auto-trigger weekly schedules, run-now with pre-flight, schedule CRUD |
+|  |    — UI: Updates page (schedule editor + pre-flight) + job center live status |
 
 ## [DISCOVERIES]
 
