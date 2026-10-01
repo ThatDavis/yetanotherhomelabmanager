@@ -1,15 +1,44 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router";
-import { StatusBadge } from "./StatusBadge";
+import { api, type DashboardData } from "../api";
+import { type Status, StatusBadge } from "./StatusBadge";
 
 // Sections grow with milestones (docs/UI.md §1)
 const SECTIONS = [
   { to: "/", label: "Dashboard", glyph: "▚", end: true },
+  { to: "/uptime", label: "Uptime", glyph: "▲" },
   { to: "/nodes", label: "Nodes", glyph: "▦" },
   { to: "/guests", label: "Guests", glyph: "▤" },
   { to: "/jobs", label: "Jobs", glyph: "▶" },
   { to: "/audit", label: "Audit", glyph: "≡" },
   { to: "/settings", label: "Settings", glyph: "⚙" },
 ] as const;
+
+// Worst status across ping targets + nodes, polled (docs/UI.md §1: always visible).
+function HealthChip() {
+  const [summary, setSummary] = useState<DashboardData["summary"] | null>(null);
+
+  useEffect(() => {
+    const load = () =>
+      api<DashboardData>("/dashboard")
+        .then((d) => setSummary(d.summary))
+        .catch(() => {});
+    load();
+    const timer = setInterval(load, 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  if (!summary) return <StatusBadge status="unknown" label="…" />;
+  const down = summary.targetsDown;
+  const status: Status = down > 0 ? "error" : summary.nodesUp < summary.nodesTotal ? "warn" : "ok";
+  const label =
+    down > 0
+      ? `${down} DOWN`
+      : summary.nodesUp < summary.nodesTotal
+        ? `${summary.nodesTotal - summary.nodesUp} NODE?`
+        : "ALL OK";
+  return <StatusBadge status={status} label={label} />;
+}
 
 export function Sidebar() {
   return (
@@ -22,8 +51,7 @@ export function Sidebar() {
       </div>
 
       <div className="border-b border-surface0 px-4 py-2">
-        {/* Placeholder until Nodes feature lands — will summarize worst node status */}
-        <StatusBadge status="unknown" label="0 NODES" />
+        <HealthChip />
       </div>
 
       <nav className="flex-1 py-2">

@@ -8,9 +8,9 @@ function renderAt(url: string) {
   return renderToString(<RouterProvider router={router} />);
 }
 
-test("sidebar renders all M1 sections on every page", () => {
+test("sidebar renders all sections on every page", () => {
   const html = renderAt("/");
-  for (const section of ["Dashboard", "Nodes", "Guests", "Jobs", "Audit", "Settings"]) {
+  for (const section of ["Dashboard", "Uptime", "Nodes", "Guests", "Jobs", "Audit", "Settings"]) {
     expect(html).toContain(section);
   }
 });

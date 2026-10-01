@@ -93,71 +93,80 @@ async function pinIfNeeded(
 }
 export function nodeTest(node: Node): Promise<StepResult> {
   return runStep("node.test", node.name, { type: node.type }, async () => {
-    const lines: string[] = [];
-
-    const secret = await loadSecret(`node-token-${node.id}`);
-    if (!secret) return { ok: false, output: "no API token secret stored for this node" };
-
-    let version: PveResponse;
-    try {
-      version = await pveRequest(node, secret, "/api2/json/version");
-    } catch (err) {
-      return { ok: false, output: `connection failed: ${(err as Error).message}` };
-    }
-
-    if (!version.fingerprint) {
-      return {
-        ok: false,
-        output: "could not read peer certificate — cannot verify server identity",
-      };
-    }
-
-    if (!node.tlsFingerprint) {
-      await prisma.node.update({
-        where: { id: node.id },
-        data: { tlsFingerprint: version.fingerprint },
-      });
-      lines.push(`tofu: pinned certificate fingerprint ${version.fingerprint}`);
-    } else if (node.tlsFingerprint !== version.fingerprint) {
-      lines.push("TLS FINGERPRINT MISMATCH — refusing to trust this server");
-      lines.push(`  pinned: ${node.tlsFingerprint}`);
-      lines.push(`  peer:   ${version.fingerprint}`);
-      lines.push("Possible MITM or reinstalled node. Unpin the fingerprint to re-trust.");
-      return { ok: false, output: lines.join("\n") };
-    }
-
-    if (version.status === 401) {
-      lines.push("authentication failed (401) — check token id and secret");
-      return { ok: false, output: lines.join("\n") };
-    }
-    if (version.status !== 200) {
-      lines.push(`version probe failed: HTTP ${version.status}`);
-      return { ok: false, output: lines.join("\n") };
-    }
-
-    const vd = pveData(version.data);
-    const versionStr =
-      vd && typeof vd === "object" && "version" in vd ? String(vd.version) : "unknown";
-    lines.push(`${node.type} version: ${versionStr}`);
-
-    // Privilege probe: the cheapest listing the token must be able to do.
-    const probePath = node.type === "pbs" ? "/api2/json/admin/datastore" : "/api2/json/nodes";
-    const probeLabel = node.type === "pbs" ? "list datastores" : "list cluster nodes";
-    const probe = await pveRequest(node, secret, probePath);
-    if (probe.status === 200) {
-      lines.push(`privileges ok: token can ${probeLabel}`);
-      return { ok: true, output: lines.join("\n") };
-    }
-    if (probe.status === 403) {
-      lines.push(`INSUFFICIENT PRIVILEGES (403): token cannot ${probeLabel}`);
-      lines.push(
-        node.type === "pbs" ? "hint: grant Datastore.Audit on /" : "hint: grant PVEAuditor on /",
-      );
-      return { ok: false, output: lines.join("\n") };
-    }
-    lines.push(`privilege probe returned HTTP ${probe.status}`);
-    return { ok: false, output: lines.join("\n") };
+    const result = await nodeTestInner(node);
+    await prisma.node.update({
+      where: { id: node.id },
+      data: { status: result.ok ? "up" : "down", lastCheckedAt: new Date() },
+    });
+    return result;
   });
+}
+
+async function nodeTestInner(node: Node): Promise<Omit<StepResult, "durationMs">> {
+  const lines: string[] = [];
+
+  const secret = await loadSecret(`node-token-${node.id}`);
+  if (!secret) return { ok: false, output: "no API token secret stored for this node" };
+
+  let version: PveResponse;
+  try {
+    version = await pveRequest(node, secret, "/api2/json/version");
+  } catch (err) {
+    return { ok: false, output: `connection failed: ${(err as Error).message}` };
+  }
+
+  if (!version.fingerprint) {
+    return {
+      ok: false,
+      output: "could not read peer certificate — cannot verify server identity",
+    };
+  }
+
+  if (!node.tlsFingerprint) {
+    await prisma.node.update({
+      where: { id: node.id },
+      data: { tlsFingerprint: version.fingerprint },
+    });
+    lines.push(`tofu: pinned certificate fingerprint ${version.fingerprint}`);
+  } else if (node.tlsFingerprint !== version.fingerprint) {
+    lines.push("TLS FINGERPRINT MISMATCH — refusing to trust this server");
+    lines.push(`  pinned: ${node.tlsFingerprint}`);
+    lines.push(`  peer:   ${version.fingerprint}`);
+    lines.push("Possible MITM or reinstalled node. Unpin the fingerprint to re-trust.");
+    return { ok: false, output: lines.join("\n") };
+  }
+
+  if (version.status === 401) {
+    lines.push("authentication failed (401) — check token id and secret");
+    return { ok: false, output: lines.join("\n") };
+  }
+  if (version.status !== 200) {
+    lines.push(`version probe failed: HTTP ${version.status}`);
+    return { ok: false, output: lines.join("\n") };
+  }
+
+  const vd = pveData(version.data);
+  const versionStr =
+    vd && typeof vd === "object" && "version" in vd ? String(vd.version) : "unknown";
+  lines.push(`${node.type} version: ${versionStr}`);
+
+  // Privilege probe: the cheapest listing the token must be able to do.
+  const probePath = node.type === "pbs" ? "/api2/json/admin/datastore" : "/api2/json/nodes";
+  const probeLabel = node.type === "pbs" ? "list datastores" : "list cluster nodes";
+  const probe = await pveRequest(node, secret, probePath);
+  if (probe.status === 200) {
+    lines.push(`privileges ok: token can ${probeLabel}`);
+    return { ok: true, output: lines.join("\n") };
+  }
+  if (probe.status === 403) {
+    lines.push(`INSUFFICIENT PRIVILEGES (403): token cannot ${probeLabel}`);
+    lines.push(
+      node.type === "pbs" ? "hint: grant Datastore.Audit on /" : "hint: grant PVEAuditor on /",
+    );
+    return { ok: false, output: lines.join("\n") };
+  }
+  lines.push(`privilege probe returned HTTP ${probe.status}`);
+  return { ok: false, output: lines.join("\n") };
 }
 
 // --- Inventory sync (node.sync) ---

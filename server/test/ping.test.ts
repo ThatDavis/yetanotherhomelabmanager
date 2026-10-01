@@ -107,3 +107,25 @@ test("targets CRUD via API, audited", async () => {
     "target.remove",
   ]);
 });
+
+test("uptime % and detail endpoint", async () => {
+  const created = await app.inject({
+    method: "POST",
+    url: "/api/targets",
+    payload: { name: "pingtest-meta", host: "127.0.0.1" },
+  });
+  const id = created.json().id;
+  await app.inject({ method: "POST", url: `/api/targets/${id}/check` });
+  await app.inject({ method: "POST", url: `/api/targets/${id}/check` });
+
+  const list = await app.inject({ method: "GET", url: "/api/targets" });
+  const row = list.json().find((t: { name: string }) => t.name === "pingtest-meta");
+  expect(row.uptimePct).toBe(100);
+
+  const detail = await app.inject({ method: "GET", url: `/api/targets/${id}/detail` });
+  expect(detail.statusCode).toBe(200);
+  expect(detail.json().results.length).toBeGreaterThan(0);
+  expect(Array.isArray(detail.json().transitions)).toBe(true);
+
+  await app.inject({ method: "DELETE", url: `/api/targets/${id}` });
+});

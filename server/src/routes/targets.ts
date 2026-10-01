@@ -20,12 +20,45 @@ const targetSchema = z.object({
 const updateSchema = targetSchema.partial();
 
 export function targetRoutes(app: FastifyInstance) {
-  app.get("/api/targets", async () =>
-    prisma.pingTarget.findMany({
+  app.get("/api/targets", async () => {
+    const targets = await prisma.pingTarget.findMany({
       include: { results: { orderBy: { at: "desc" }, take: 10 } },
       orderBy: { name: "asc" },
-    }),
-  );
+    });
+    // Uptime % over the retained history window (7 days)
+    const counts = await prisma.checkResult.groupBy({
+      by: ["targetId", "ok"],
+      _count: { _all: true },
+    });
+    const uptime: Record<string, number | null> = {};
+    for (const t of targets) uptime[t.id] = null;
+    const totals: Record<string, number> = {};
+    const oks: Record<string, number> = {};
+    for (const row of counts) {
+      totals[row.targetId] = (totals[row.targetId] ?? 0) + row._count._all;
+      if (row.ok) oks[row.targetId] = row._count._all;
+    }
+    for (const t of targets) {
+      const total = totals[t.id];
+      uptime[t.id] = total ? Math.round(((oks[t.id] ?? 0) / total) * 1000) / 10 : null;
+    }
+    return targets.map((t) => ({ ...t, uptimePct: uptime[t.id] }));
+  });
+
+  app.get("/api/targets/:id/detail", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const target = await prisma.pingTarget.findUnique({
+      where: { id },
+      include: { results: { orderBy: { at: "desc" }, take: 50 } },
+    });
+    if (!target) return reply.code(404).send({ error: "target not found" });
+    const transitions = await prisma.auditEntry.findMany({
+      where: { action: "ping.transition", target: target.name },
+      orderBy: { at: "desc" },
+      take: 10,
+    });
+    return { ...target, transitions };
+  });
 
   app.post("/api/targets", async (req, reply) => {
     const parsed = targetSchema.safeParse(req.body);

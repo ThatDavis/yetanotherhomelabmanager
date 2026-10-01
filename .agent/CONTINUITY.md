@@ -18,7 +18,7 @@ Goal: Deployable app — passkey login, encrypted secrets, PVE/PBS + host regist
 ### Milestone 2: Monitoring (In Progress)
 Goal: Live status — ping checks, dashboards, health checks, alerting.
 - [x] M2.1: Ping checks engine (targets, scheduler, state machine, dashboard panel)
-- [ ] M2.2: Live dashboard (cards + guest grid + status strip)
+- [x] M2.2: Live dashboard (cards + guest grid + status strip)
 - [ ] M2.3: Notifications (email + webhook on state change)
 
 ### Open Questions
@@ -104,6 +104,14 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 |  |    ✓ Dashboard targets panel |
 |  |    ✓ Tests + scheduler verification |
 | 2026-10-01 | Completed feature: Ping checks engine (M2.1, PR #15). DoD all PASS; scheduler verified live. |
+| 2026-10-01 | Started feature: Live dashboard (M2.2, Issue #16) on branch feature/16-live-dashboard. |
+|  |    ✓ Node status fields + nodeTest recording |
+|  |    ✓ Scheduler node checks (5 min) |
+|  |    ✓ GET /api/dashboard aggregation |
+|  |    ✓ Cards + liveness + activity + strip grid |
+|  |    ✓ Sidebar chip live |
+|  |    ✓ Tests + browser verification |
+| 2026-10-01 | Completed feature: Live dashboard + Uptime tab (M2.2, PR #17). DoD all PASS; browser-verified dashboard/tab/modal. |
 
 ## [DISCOVERIES]
 
@@ -142,3 +150,6 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 
 ### Ping checks engine (M2.1, 2026-10-01)
 - Manual ping targets with per-target interval + alertAfter; in-process staggered scheduler; state machine with audited transitions; dashboard management panel. Live-verified scheduling; fixed deleted-mid-check race and clip-path drawer trap (portal).
+
+### Live dashboard + Uptime tab (M2.2, 2026-10-01)
+- Dashboard went live: summary cards, node liveness (scheduler-driven node tests), recent activity, target strips; config split into the Uptime tab (uptime %, detail modal with SVG latency graph); sidebar chip now real worst-status. Immediately surfaced a real signal (defiant DOWN).
