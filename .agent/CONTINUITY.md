@@ -23,7 +23,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 
 ### Milestone 3: Updates (In Progress)
 Goal: Scheduled updates with reboot orchestration, post-update verification, email reports.
-- [ ] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
+- [x] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -134,6 +134,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ Scheduler + API: auto-trigger weekly schedules, run-now with pre-flight, schedule CRUD |
 |  |    ✓ UI: Updates page (schedule editor + pre-flight) + job center live status |
 |  |    ✓ Built: UpdateSchedule/Job/JobStep models (+Host.self); updates.ts (os.update apt/dnf + reboot probe, container.update compose-only); jobs.ts runner (serial queue, continue-on-failure, deleted-mid-job guard, per-job + global SSE); schedules API + weekly scheduler tick; Updates page, Jobs job center, toasts (server 74/74, web 12/12); browser-verified full flow incl. live SSE step + toast |
+| 2026-10-01 | Completed feature: Update scheduling (M3.1, PR #21). DoD all PASS (1 WARN: no web component tests for new pages, matches convention); live browser verification; real-host run pending on homelab. |
 
 ## [DISCOVERIES]
 
@@ -176,6 +177,11 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ### Live dashboard + Uptime tab (M2.2, 2026-10-01)
 - Dashboard went live: summary cards, node liveness (scheduler-driven node tests), recent activity, target strips; config split into the Uptime tab (uptime %, detail modal with SVG latency graph); sidebar chip now real worst-status. Immediately surfaced a real signal (defiant DOWN).
+
+### Update scheduling (M3.1, 2026-10-01)
+- Weekly update schedules (day(s)+time, host scope, separate OS/container toggles) firing as persistent background jobs via a serial in-process runner (Job/JobStep DB rows); per-host failure isolation; per-job + global SSE; job center UI with live status, pre-flight summary before manual runs, completion toasts.
+- `os.update` step: apt/dnf/yum auto-detect over SSH, noninteractive with conffiles-kept, 30-min timeout, reboot-pending probe (deferred to M3.2). `container.update`: docker compose projects only, standalone untouched.
+- `Host.self` flag resolves the self-host open question by design. Fixed live-found bug: os.update masked SSH connection failures as "no package manager" (regression-pinned). Browser-verified end-to-end (PR #21).
 
 ### Notifications on state change (M2.3, 2026-10-01)
 - Exactly one alert per transition (target down/recovery, node down/up) to email (env SMTP, nodemailer) and/or DB-backed webhooks (JSON POST, editable without restart, per-target channel pick). Sends audited (notify.send/fail), never affect checks; unknown→up first-check is audited but not alerted. Fixed pre-existing zod .partial() defaults-wipe-on-PATCH bug (regression-pinned). Browser-verified; closes Milestone 2.
