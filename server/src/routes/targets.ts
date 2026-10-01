@@ -20,7 +20,18 @@ const targetSchema = z.object({
   webhookIds: z.array(z.string()).default([]),
 });
 
-const updateSchema = targetSchema.partial();
+// Plain optionals — .partial() on the create schema would re-apply the
+// .default() values to omitted fields, silently resetting them on update.
+const updateSchema = z.object({
+  name: targetSchema.shape.name.optional(),
+  host: targetSchema.shape.host.optional(),
+  intervalSec: z.number().int().min(10).max(86400).optional(),
+  alertAfter: z.number().int().min(1).max(100).optional(),
+  enabled: z.boolean().optional(),
+  notify: z.boolean().optional(),
+  notifyEmail: z.boolean().optional(),
+  webhookIds: z.array(z.string()).optional(),
+});
 
 export function targetRoutes(app: FastifyInstance) {
   app.get("/api/targets", async () => {

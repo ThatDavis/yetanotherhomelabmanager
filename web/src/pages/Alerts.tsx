@@ -67,7 +67,7 @@ export function Alerts() {
                   </span>
                 ) : (
                   <span className="text-subtext0">
-                    SMTP not configured — set SMTP_HOST / SMTP_USER / SMTP_PASS in .env
+                    SMTP not configured — set SMTP_HOST / SMTP_USER / SMTP_PASSWORD in .env
                   </span>
                 )}
               </div>

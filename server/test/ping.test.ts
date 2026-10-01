@@ -90,6 +90,8 @@ test("targets CRUD via API, audited", async () => {
     payload: { alertAfter: 7 },
   });
   expect(patched.json().alertAfter).toBe(7);
+  // Omitted fields must keep their values, not snap back to schema defaults.
+  expect(patched.json().intervalSec).toBe(30);
 
   const checked = await app.inject({ method: "POST", url: `/api/targets/${id}/check` });
   expect(checked.json().ok).toBe(true);

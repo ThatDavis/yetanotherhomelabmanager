@@ -12,7 +12,13 @@ const webhookSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
-const webhookUpdateSchema = webhookSchema.partial();
+// Plain optionals — .partial() on the create schema would re-apply .default("")
+// to omitted fields, silently wiping them on update.
+const webhookUpdateSchema = z.object({
+  name: z.string().max(50).optional(),
+  url: z.string().url().max(500).optional(),
+  enabled: z.boolean().optional(),
+});
 
 export function alertRoutes(app: FastifyInstance) {
   app.get("/api/alerts", async () => ({

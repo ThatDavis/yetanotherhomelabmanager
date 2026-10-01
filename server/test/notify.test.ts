@@ -230,7 +230,7 @@ test("alerts API: email toggle, webhook CRUD, test-send", async () => {
     payload: { enabled: false },
   });
   expect(patched.statusCode).toBe(200);
-  expect(patched.json()).toMatchObject({ enabled: false });
+  expect(patched.json()).toMatchObject({ enabled: false, name: `${PREFIX}api` }); // name preserved
 
   const test = await app.inject({ method: "POST", url: `/api/webhooks/${webhook.id}/test` });
   expect(test.statusCode).toBe(200);
