@@ -15,6 +15,9 @@ const targetSchema = z.object({
   intervalSec: z.number().int().min(10).max(86400).default(60),
   alertAfter: z.number().int().min(1).max(100).default(3),
   enabled: z.boolean().default(true),
+  notify: z.boolean().default(false),
+  notifyEmail: z.boolean().default(false),
+  webhookIds: z.array(z.string()).default([]),
 });
 
 const updateSchema = targetSchema.partial();
@@ -22,7 +25,7 @@ const updateSchema = targetSchema.partial();
 export function targetRoutes(app: FastifyInstance) {
   app.get("/api/targets", async () => {
     const targets = await prisma.pingTarget.findMany({
-      include: { results: { orderBy: { at: "desc" }, take: 10 } },
+      include: { results: { orderBy: { at: "desc" }, take: 10 }, webhooks: true },
       orderBy: { name: "asc" },
     });
     // Uptime % over the retained history window (7 days)
@@ -66,7 +69,10 @@ export function targetRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "invalid target", details: parsed.error.issues });
     }
     try {
-      const target = await prisma.pingTarget.create({ data: parsed.data });
+      const { webhookIds, ...data } = parsed.data;
+      const target = await prisma.pingTarget.create({
+        data: { ...data, webhooks: { connect: webhookIds.map((id) => ({ id })) } },
+      });
       await audit({
         action: "target.register",
         target: target.name,
@@ -100,13 +106,26 @@ export function targetRoutes(app: FastifyInstance) {
       intervalSec?: number;
       alertAfter?: number;
       enabled?: boolean;
+      notify?: boolean;
+      notifyEmail?: boolean;
     } = {};
     if (parsed.data.name !== undefined) fields.name = parsed.data.name;
     if (parsed.data.host !== undefined) fields.host = parsed.data.host;
     if (parsed.data.intervalSec !== undefined) fields.intervalSec = parsed.data.intervalSec;
     if (parsed.data.alertAfter !== undefined) fields.alertAfter = parsed.data.alertAfter;
     if (parsed.data.enabled !== undefined) fields.enabled = parsed.data.enabled;
-    const updated = await prisma.pingTarget.update({ where: { id }, data: fields });
+    if (parsed.data.notify !== undefined) fields.notify = parsed.data.notify;
+    if (parsed.data.notifyEmail !== undefined) fields.notifyEmail = parsed.data.notifyEmail;
+    const updated = await prisma.pingTarget.update({
+      where: { id },
+      data: {
+        ...fields,
+        // Replace the full selection whenever webhookIds is sent.
+        ...(parsed.data.webhookIds !== undefined
+          ? { webhooks: { set: parsed.data.webhookIds.map((webhookId) => ({ id: webhookId })) } }
+          : {}),
+      },
+    });
     await audit({ action: "target.update", target: updated.name, params: fields, ok: true });
     await scheduleTarget(id);
     return updated;

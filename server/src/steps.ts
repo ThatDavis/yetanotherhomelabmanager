@@ -2,6 +2,7 @@ import type { Host, Node, PingTarget } from "@prisma/client";
 import { audit } from "./audit.js";
 import { prisma } from "./db.js";
 import { execOnHost, type OutputLine } from "./executor.js";
+import { allChannels, emailEnabled, sendAlert, smtpConfigured } from "./notify.js";
 import { ping } from "./ping.js";
 import { type PveResponse, pveData, pveRequest } from "./proxmox.js";
 import { loadSecret } from "./secrets.js";
@@ -94,10 +95,31 @@ async function pinIfNeeded(
 export function nodeTest(node: Node): Promise<StepResult> {
   return runStep("node.test", node.name, { type: node.type }, async () => {
     const result = await nodeTestInner(node);
+    const status = result.ok ? "up" : "down";
     await prisma.node.update({
       where: { id: node.id },
-      data: { status: result.ok ? "up" : "down", lastCheckedAt: new Date() },
+      data: { status, lastCheckedAt: new Date() },
     });
+    // unknown → up on the first check is not a recovery; alert only on real transitions.
+    if (node.status !== status && node.status !== "unknown") {
+      await audit({
+        action: "node.transition",
+        target: node.name,
+        ok: true,
+        output: `${node.status} → ${status}`,
+      });
+      // Node alerts go to every enabled channel; failures audited, never thrown.
+      await sendAlert(
+        {
+          source: "node",
+          name: node.name,
+          from: node.status,
+          to: status,
+          detail: `${node.url}\n${result.output.slice(0, 500)}`,
+        },
+        await allChannels(),
+      );
+    }
     return result;
   });
 }
@@ -387,6 +409,10 @@ export function pingCheck(target: PingTarget): Promise<StepResult> {
       return { ok: true, output: "target deleted mid-check" };
     }
 
+    const output = res.ok
+      ? `${target.host}: ok${res.latencyMs !== null ? ` (${res.latencyMs}ms)` : ""}`
+      : `${target.host}: FAIL (${failures}/${target.alertAfter}) ${res.error}`;
+
     if (transitioned) {
       await audit({
         action: "ping.transition",
@@ -394,11 +420,19 @@ export function pingCheck(target: PingTarget): Promise<StepResult> {
         ok: true,
         output: `${target.status} → ${status}`,
       });
+      // unknown → up on the first check is not a recovery; alert only on real transitions.
+      if (target.notify && target.status !== "unknown") {
+        // Per-target channel pick; send failures are audited, never thrown.
+        const webhooks = await prisma.webhook.findMany({
+          where: { targets: { some: { id: target.id } }, enabled: true },
+        });
+        await sendAlert(
+          { source: "target", name: target.name, from: target.status, to: status, detail: output },
+          { email: target.notifyEmail && smtpConfigured() && (await emailEnabled()), webhooks },
+        );
+      }
     }
 
-    const output = res.ok
-      ? `${target.host}: ok${res.latencyMs !== null ? ` (${res.latencyMs}ms)` : ""}`
-      : `${target.host}: FAIL (${failures}/${target.alertAfter}) ${res.error}`;
     return {
       ok: res.ok,
       output,

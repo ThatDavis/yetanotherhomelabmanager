@@ -106,10 +106,13 @@ model PingTarget {
   consecutiveFailures Int      @default(0)
   lastLatencyMs       Int?
   lastCheckedAt       DateTime?
+  notify              Boolean  @default(false) // send notifications on state transition
+  notifyEmail         Boolean  @default(false) // include the email channel
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  results CheckResult[]
+  results  CheckResult[]
+  webhooks Webhook[]
 }
 
 // One ping result, time-bounded (7-day pruning by the scheduler).
@@ -123,4 +126,25 @@ model CheckResult {
   error     String   @default("")
 
   @@index([targetId, at])
+}
+
+// A webhook endpoint that alerts POST as JSON on state transitions.
+// DB-backed so endpoints can change without restarting the container.
+model Webhook {
+  id        String   @id @default(cuid())
+  name      String   @default("")
+  url       String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  targets PingTarget[]
+}
+
+// Simple key-value app settings (value is a string, "true"/"false" for flags).
+// Well-known keys: "notify.email.enabled".
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
