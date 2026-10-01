@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
+import { TargetsPanel } from "../components/TargetsPanel";
 
 export function Dashboard() {
   return (
@@ -25,6 +26,9 @@ export function Dashboard() {
             </p>
           </div>
         </Panel>
+      </div>
+      <div className="mt-4">
+        <TargetsPanel />
       </div>
     </>
   );

@@ -9,6 +9,7 @@ import { authRoutes } from "./routes/auth.js";
 import { hostRoutes } from "./routes/hosts.js";
 import { nodeRoutes } from "./routes/nodes.js";
 import { secretRoutes } from "./routes/secrets.js";
+import { targetRoutes } from "./routes/targets.js";
 
 type BuildOptions = {
   /** Directory containing the built SPA (index.html). Defaults to ../web/dist or $SPA_DIR. */
@@ -30,6 +31,7 @@ export function buildServer(opts: BuildOptions = {}) {
   app.register(hostRoutes);
   app.register(nodeRoutes);
   app.register(secretRoutes);
+  app.register(targetRoutes);
   const spaDir =
     opts.spaDir ?? process.env.SPA_DIR ?? path.resolve(import.meta.dirname, "../../web/dist");
 

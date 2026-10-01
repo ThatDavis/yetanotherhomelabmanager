@@ -1,0 +1,218 @@
+import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { api, type PingTarget } from "../api";
+import { Drawer } from "./Drawer";
+import { Panel } from "./Panel";
+import { StatusBadge } from "./StatusBadge";
+
+type DrawerState = { kind: "add" } | { kind: "edit"; target: PingTarget } | null;
+
+const STATUS_MAP = { up: "ok", down: "error", unknown: "unknown" } as const;
+
+const inputCls =
+  "w-full border border-surface1 bg-crust px-3 py-1.5 font-mono text-sm text-text outline-none transition-colors duration-150 focus:border-accent";
+
+export function TargetsPanel() {
+  const [targets, setTargets] = useState<PingTarget[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<DrawerState>(null);
+
+  const refresh = useCallback(() => {
+    api<PingTarget[]>("/targets")
+      .then(setTargets)
+      .catch((err: Error) => setError(err.message));
+  }, []);
+
+  useEffect(refresh, [refresh]);
+
+  const checkNow = async (t: PingTarget) => {
+    await api(`/targets/${t.id}/check`, { method: "POST" });
+    refresh();
+  };
+
+  const remove = async (t: PingTarget) => {
+    if (!window.confirm(`Remove target "${t.name}"?`)) return;
+    await api(`/targets/${t.id}`, { method: "DELETE" });
+    refresh();
+  };
+
+  return (
+    <Panel label="PING TARGETS">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="font-mono text-xs text-subtext0">
+          {targets.filter((t) => t.status === "down").length} down / {targets.length} targets
+        </span>
+        <button
+          type="button"
+          onClick={() => setDrawer({ kind: "add" })}
+          className="border border-surface1 px-3 py-1 font-mono text-xs text-accent transition-colors duration-150 hover:text-text"
+        >
+          + ADD TARGET
+        </button>
+      </div>
+
+      {error && <p className="font-mono text-sm text-status-error">API error: {error}</p>}
+
+      {!error && targets.length === 0 && (
+        <p className="py-4 text-center font-mono text-sm text-subtext0">
+          No ping targets. Add one to start monitoring.
+        </p>
+      )}
+
+      {targets.length > 0 && (
+        <table className="w-full border-collapse font-mono text-sm">
+          <thead>
+            <tr className="micro-label border-b border-surface1 text-left">
+              <th className="py-2 pr-4 font-normal">NAME</th>
+              <th className="py-2 pr-4 font-normal">HOST</th>
+              <th className="py-2 pr-4 font-normal">STATUS</th>
+              <th className="py-2 pr-4 font-normal">FAILS</th>
+              <th className="py-2 pr-4 font-normal">LATENCY</th>
+              <th className="py-2 font-normal">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {targets.map((t) => (
+              <tr key={t.id} className="border-b border-surface0 text-subtext1">
+                <td className="py-2 pr-4 text-text">{t.name}</td>
+                <td className="py-2 pr-4">{t.host}</td>
+                <td className="py-2 pr-4">
+                  <StatusBadge status={STATUS_MAP[t.status]} label={t.status.toUpperCase()} />
+                </td>
+                <td className="py-2 pr-4">
+                  {t.consecutiveFailures}/{t.alertAfter}
+                </td>
+                <td className="py-2 pr-4">
+                  {t.lastLatencyMs !== null ? `${t.lastLatencyMs}ms` : "—"}
+                </td>
+                <td className="py-2">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => checkNow(t)}
+                      className="text-sapphire hover:text-text"
+                    >
+                      CHECK
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDrawer({ kind: "edit", target: t })}
+                      className="text-subtext0 hover:text-text"
+                    >
+                      EDIT
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(t)}
+                      className="text-status-error/70 hover:text-status-error"
+                    >
+                      REMOVE
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <TargetFormDrawer
+        open={drawer !== null}
+        target={drawer?.kind === "edit" ? drawer.target : undefined}
+        onClose={() => setDrawer(null)}
+        onSaved={() => {
+          setDrawer(null);
+          refresh();
+        }}
+      />
+    </Panel>
+  );
+}
+
+function TargetFormDrawer({
+  open,
+  target,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  target?: PingTarget;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const editing = target !== undefined;
+  const [form, setForm] = useState({ name: "", host: "", intervalSec: "60", alertAfter: "3" });
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setForm(
+        target
+          ? {
+              name: target.name,
+              host: target.host,
+              intervalSec: String(target.intervalSec),
+              alertAfter: String(target.alertAfter),
+            }
+          : { name: "", host: "", intervalSec: "60", alertAfter: "3" },
+      );
+      setError(null);
+    }
+  }, [open, target]);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      const body = {
+        name: form.name,
+        host: form.host,
+        intervalSec: Number(form.intervalSec),
+        alertAfter: Number(form.alertAfter),
+      };
+      if (editing) {
+        await api(`/targets/${target.id}`, { method: "PATCH", body: JSON.stringify(body) });
+      } else {
+        await api("/targets", { method: "POST", body: JSON.stringify(body) });
+      }
+      onSaved();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  return (
+    <Drawer
+      title={editing ? `EDIT // ${target.name}` : "ADD // TARGET"}
+      open={open}
+      onClose={onClose}
+    >
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        {(
+          [
+            ["name", "NAME (lowercase-dashes)"],
+            ["host", "HOST / IP"],
+            ["intervalSec", "INTERVAL (seconds, min 10)"],
+            ["alertAfter", "FAILURES BEFORE DOWN/ALERT"],
+          ] as const
+        ).map(([key, label]) => (
+          <label className="block" key={key}>
+            <span className="micro-label">{label}</span>
+            <input
+              className={`${inputCls} mt-1`}
+              value={form[key]}
+              onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+              required
+            />
+          </label>
+        ))}
+        {error && <p className="font-mono text-sm text-status-error">{error}</p>}
+        <button
+          type="submit"
+          className="chamfer chamfer-accent px-4 py-2 font-mono text-sm text-accent [--chamfer-bg:color-mix(in_oklab,var(--color-accent)_10%,var(--color-mantle))] hover:[--chamfer-bg:color-mix(in_oklab,var(--color-accent)_20%,var(--color-mantle))]"
+        >
+          {editing ? "SAVE CHANGES" : "ADD TARGET"}
+        </button>
+      </form>
+    </Drawer>
+  );
+}
