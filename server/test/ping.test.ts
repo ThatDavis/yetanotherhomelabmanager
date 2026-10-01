@@ -35,15 +35,15 @@ test("state machine: down after alertAfter failures, up on first success", async
   // Force failures with an unroutable host
   await prisma.pingTarget.update({ where: { id }, data: { host: "192.0.2.1" } });
 
-  let target = (await prisma.pingTarget.findUnique({ where: { id } }))!;
+  let target = await prisma.pingTarget.findUniqueOrThrow({ where: { id } });
   const first = await pingCheck(target);
   expect(first.ok).toBe(false);
-  target = (await prisma.pingTarget.findUnique({ where: { id } }))!;
+  target = await prisma.pingTarget.findUniqueOrThrow({ where: { id } });
   expect(target.status).toBe("unknown"); // 1/2 failures — not yet down
   expect(target.consecutiveFailures).toBe(1);
 
   await pingCheck(target);
-  target = (await prisma.pingTarget.findUnique({ where: { id } }))!;
+  target = await prisma.pingTarget.findUniqueOrThrow({ where: { id } });
   expect(target.status).toBe("down"); // 2/2 — threshold crossed
 
   // Transition recorded
@@ -54,17 +54,17 @@ test("state machine: down after alertAfter failures, up on first success", async
 
   // Success flips back up immediately
   await prisma.pingTarget.update({ where: { id }, data: { host: "127.0.0.1" } });
-  target = (await prisma.pingTarget.findUnique({ where: { id } }))!;
+  target = await prisma.pingTarget.findUniqueOrThrow({ where: { id } });
   const recovered = await pingCheck(target);
   expect(recovered.ok).toBe(true);
-  target = (await prisma.pingTarget.findUnique({ where: { id } }))!;
+  target = await prisma.pingTarget.findUniqueOrThrow({ where: { id } });
   expect(target.status).toBe("up");
   expect(target.consecutiveFailures).toBe(0);
 });
 
 test("results are persisted per check", async () => {
   const id = await makeTarget();
-  const target = (await prisma.pingTarget.findUnique({ where: { id } }))!;
+  const target = await prisma.pingTarget.findUniqueOrThrow({ where: { id } });
   await pingCheck(target);
   await pingCheck(target);
   const results = await prisma.checkResult.findMany({ where: { targetId: id } });
