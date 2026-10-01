@@ -33,7 +33,7 @@ export async function emailEnabled(): Promise<boolean> {
 }
 
 export function smtpConfigured(): boolean {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD);
 }
 
 function emailConfig(): EmailConfig {
@@ -42,13 +42,17 @@ function emailConfig(): EmailConfig {
     port: Number(process.env.SMTP_PORT ?? 587),
     secure: process.env.SMTP_SECURE === "true",
     user: process.env.SMTP_USER ?? "",
-    pass: process.env.SMTP_PASS ?? "",
+    pass: process.env.SMTP_PASSWORD ?? "",
     from: process.env.SMTP_FROM ?? process.env.SMTP_USER ?? "yahlm@localhost",
     to: process.env.SMTP_TO ?? process.env.SMTP_USER ?? "",
   };
 }
 
 let transporter: Transporter | null = null;
+// Test seam: inject a fake transport (e.g. nodemailer's jsonTransport); null restores env-based.
+export function setTransporterForTest(t: Transporter | null): void {
+  transporter = t;
+}
 function getTransporter(): Transporter {
   // Reuse across sends; env does not change at runtime.
   transporter ??= nodemailer.createTransport({

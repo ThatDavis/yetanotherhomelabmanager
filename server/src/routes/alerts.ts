@@ -86,7 +86,8 @@ export function alertRoutes(app: FastifyInstance) {
         to: "up",
         detail: "manual test from YAHLM alerts page",
       },
-      { email: false, webhooks: [webhook] },
+      // Bypass the enabled filter: testing an endpoint is an explicit manual act.
+      { email: false, webhooks: [{ ...webhook, enabled: true }] },
     );
     return { results };
   });
