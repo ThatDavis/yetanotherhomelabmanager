@@ -43,6 +43,8 @@ model Node {
   url            String // e.g. https://pve1.lab:8006
   tokenId        String // user@realm!tokenname
   tlsFingerprint String   @default("") // TOFU-pinned on first successful connection
+  status         String   @default("unknown") // unknown | up | down (last node.test)
+  lastCheckedAt  DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

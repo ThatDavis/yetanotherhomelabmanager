@@ -68,6 +68,20 @@ export type PingTarget = {
   lastCheckedAt: string | null;
 };
 
+export type DashboardData = {
+  targets: (PingTarget & { results: { ok: boolean; at: string }[] })[];
+  nodes: { id: string; name: string; type: string; status: string; lastCheckedAt: string | null }[];
+  guests: { running: number; stopped: number; other: number };
+  recentAudit: AuditEntry[];
+  summary: {
+    targetsUp: number;
+    targetsDown: number;
+    targetsTotal: number;
+    nodesUp: number;
+    nodesTotal: number;
+  };
+};
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     // Fastify 400s on content-type: application/json with an empty body
