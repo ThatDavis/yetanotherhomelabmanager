@@ -52,15 +52,7 @@
 
 ## Active Feature
 
-**Live dashboard (M2.2)** — branch `feature/16-live-dashboard` (Milestone 2, issue #16)
-
-Sub-tasks:
-- [x] Node status fields + nodeTest recording
-- [x] Scheduler node checks (5 min)
-- [x] GET /api/dashboard aggregation
-- [x] Cards + liveness + activity + strip grid
-- [x] Sidebar chip live
-- [x] Tests + browser verification
+*No active feature. Run `/dev:start-feature` to begin.*
 
 ## Completed Features
 
@@ -72,3 +64,4 @@ Sub-tasks:
 - **Audit log viewer** (Milestone 1, 2026-09-30) — filterable/paginated audit read, expandable entries, auth.logout coverage (issue #10)
 - **Secrets management** (Milestone 1, 2026-09-30) — metadata list, guarded delete, master key rotation, container deploy verified (issue #12)
 - **Ping checks engine (M2.1)** (Milestone 2, 2026-10-01) — targets + scheduler + alertAfter state machine, dashboard panel, drawer portal fix (issue #14)
+- **Live dashboard + Uptime tab (M2.2)** (Milestone 2, 2026-10-01) — live cards/liveness/strips, Uptime config tab, detail modal with latency graph (issue #16)
