@@ -157,7 +157,21 @@ test("jobs API lists jobs and streams SSE events", async () => {
     }
     expect(received).toContain("event: status");
     controller.abort();
-    reader?.cancel().catch(() => {});
+    reader.cancel().catch(() => {});
+
+    // Global stream: same shape, no job id needed.
+    const gres = await fetch(`http://127.0.0.1:${port}/api/jobs/events`);
+    expect(gres.status).toBe(200);
+    if (!gres.body) throw new Error("SSE response has no body");
+    const greader = gres.body.getReader();
+    let greceived = "";
+    while (!greceived.includes("event: status")) {
+      const { value, done } = await greader.read();
+      if (done) break;
+      greceived += decoder.decode(value);
+    }
+    expect(greceived).toContain("subscribed");
+    await greader.cancel();
   } finally {
     await sseApp.close();
   }
