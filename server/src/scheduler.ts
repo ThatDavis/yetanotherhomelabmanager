@@ -35,7 +35,7 @@ export async function scheduleTarget(targetId: string): Promise<void> {
 
 export async function startScheduler(): Promise<void> {
   const targets = await prisma.pingTarget.findMany({ where: { enabled: true } });
-  targets.forEach((t, i) => schedule(t, i * 2000)); // stagger startup probes
+  targets.forEach((t, i) => void schedule(t, i * 2000)); // stagger startup probes
   pruneTimer = setInterval(pruneOldResults, PRUNE_INTERVAL_MS);
   pruneTimer.unref();
 }
