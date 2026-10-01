@@ -1,13 +1,15 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { type AuditEntry, api, type PingTarget } from "../api";
 import { Drawer } from "../components/Drawer";
+import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
+import { PingGraph } from "../components/PingGraph";
 import { StatusBadge } from "../components/StatusBadge";
 import { StatusStrip, stripBlocks } from "../components/StatusStrip";
 
 type TargetWithMeta = PingTarget & {
   uptimePct: number | null;
-  results: { ok: boolean; at: string }[];
+  results: { ok: boolean; at: string; latencyMs: number | null }[];
 };
 type TargetDetail = TargetWithMeta & { transitions: AuditEntry[] };
 
@@ -142,7 +144,7 @@ export function Uptime() {
         }}
       />
 
-      <DetailDrawer
+      <DetailModal
         target={drawer?.kind === "detail" ? drawer.target : null}
         onClose={() => setDrawer(null)}
       />
@@ -150,7 +152,7 @@ export function Uptime() {
   );
 }
 
-function DetailDrawer({ target, onClose }: { target: TargetWithMeta | null; onClose: () => void }) {
+function DetailModal({ target, onClose }: { target: TargetWithMeta | null; onClose: () => void }) {
   const [detail, setDetail] = useState<TargetDetail | null>(null);
 
   useEffect(() => {
@@ -163,7 +165,7 @@ function DetailDrawer({ target, onClose }: { target: TargetWithMeta | null; onCl
   }, [target]);
 
   return (
-    <Drawer title={`TARGET // ${target?.name ?? ""}`} open={target !== null} onClose={onClose}>
+    <Modal title={`TARGET // ${target?.name ?? ""}`} open={target !== null} onClose={onClose} wide>
       {target && !detail && <p className="font-mono text-sm text-status-running">Loading…</p>}
       {detail && (
         <>
@@ -174,10 +176,14 @@ function DetailDrawer({ target, onClose }: { target: TargetWithMeta | null; onCl
             </span>
           </div>
 
+          <div className="mb-4">
+            <PingGraph results={[...detail.results].reverse()} />
+          </div>
+
           <div className="micro-label mb-2">▚ RECENT RESULTS</div>
           <table className="mb-4 w-full border-collapse font-mono text-xs">
             <tbody>
-              {detail.results.map((r, i) => (
+              {detail.results.slice(0, 20).map((r, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: results are append-only, never reordered
                 <tr key={i} className="border-b border-surface0 text-subtext1">
                   <td className="py-1 pr-3 whitespace-nowrap">
@@ -212,7 +218,7 @@ function DetailDrawer({ target, onClose }: { target: TargetWithMeta | null; onCl
           )}
         </>
       )}
-    </Drawer>
+    </Modal>
   );
 }
 

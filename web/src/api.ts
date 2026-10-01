@@ -69,7 +69,7 @@ export type PingTarget = {
 };
 
 export type DashboardData = {
-  targets: (PingTarget & { results: { ok: boolean; at: string }[] })[];
+  targets: (PingTarget & { results: { ok: boolean; at: string; latencyMs: number | null }[] })[];
   nodes: { id: string; name: string; type: string; status: string; lastCheckedAt: string | null }[];
   guests: { running: number; stopped: number; other: number };
   recentAudit: AuditEntry[];
