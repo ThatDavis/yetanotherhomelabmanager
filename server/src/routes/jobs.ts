@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../db.js";
-import { subscribeJob } from "../jobs.js";
+import { subscribeAllJobs, subscribeJob } from "../jobs.js";
 
 const jobInclude = {
   schedule: { select: { id: true, name: true } },
@@ -28,6 +28,23 @@ export function jobRoutes(app: FastifyInstance) {
   });
 
   // Live job status (UI.md §5: SSE with poll fallback on the client).
+  app.get("/api/jobs/events", async (req, reply) => {
+    reply.raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    });
+    reply.raw.write(`event: status\ndata: ${JSON.stringify({ status: "subscribed" })}\n\n`);
+    const send = (event: string, data: unknown) => {
+      reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+    const unsubscribe = subscribeAllJobs(send);
+    req.raw.on("close", () => {
+      unsubscribe();
+      reply.raw.end();
+    });
+  });
+
   app.get("/api/jobs/:id/events", async (req, reply) => {
     const { id } = req.params as { id: string };
     const job = await prisma.job.findUnique({ where: { id }, select: { id: true } });

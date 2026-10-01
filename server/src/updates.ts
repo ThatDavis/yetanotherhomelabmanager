@@ -50,7 +50,13 @@ export function osUpdate(host: Host): Promise<StepResult> {
     const probe = await execOnHost(host, PM_PROBE);
     const pm = pmFromProbe(probe.output);
     if (!pm) {
-      return { ok: false, output: "no supported package manager found (apt-get/dnf/yum)" };
+      // exitCode null means the probe itself could not run (connection
+      // failure) — surface that instead of a misleading PM message.
+      const detail = probe.exitCode === null ? `\n${probe.output}` : "";
+      return {
+        ok: false,
+        output: `no supported package manager found (apt-get/dnf/yum)${detail}`,
+      };
     }
 
     const update = await execOnHost(host, updateCommand(pm), OS_UPDATE_TIMEOUT_MS);

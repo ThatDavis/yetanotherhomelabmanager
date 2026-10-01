@@ -5,6 +5,7 @@ export type Host = {
   port: number;
   username: string;
   notes: string;
+  self: boolean;
   createdAt: string;
 };
 
@@ -85,6 +86,40 @@ export type PingTarget = {
   notify: boolean;
   notifyEmail: boolean;
   webhooks: Webhook[];
+};
+
+export type UpdateSchedule = {
+  id: string;
+  name: string;
+  daysOfWeek: number[]; // 0=Sunday .. 6=Saturday
+  timeOfDay: string; // "HH:MM"
+  osUpdates: boolean;
+  containerUpdates: boolean;
+  enabled: boolean;
+  lastRunAt: string | null;
+  hosts: { id: string; alias: string; hostname: string; self: boolean }[];
+  jobs: { id: string; status: string; startedAt: string }[];
+};
+
+export type JobStep = {
+  id: string;
+  name: string; // dotted step name
+  ok: boolean;
+  output: string;
+  rebootPending: boolean;
+  startedAt: string;
+  durationMs: number;
+  host: { id: string; alias: string; self: boolean } | null;
+};
+
+export type Job = {
+  id: string;
+  trigger: "scheduled" | "manual";
+  status: "running" | "succeeded" | "failed";
+  startedAt: string;
+  finishedAt: string | null;
+  schedule: { id: string; name: string } | null;
+  steps: JobStep[];
 };
 
 export type DashboardData = {

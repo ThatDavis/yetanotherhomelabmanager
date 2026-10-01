@@ -10,6 +10,7 @@ const SECTIONS = [
   { to: "/alerts", label: "Alerts", glyph: "⚠" },
   { to: "/nodes", label: "Nodes", glyph: "▦" },
   { to: "/guests", label: "Guests", glyph: "▤" },
+  { to: "/updates", label: "Updates", glyph: "↻" },
   { to: "/jobs", label: "Jobs", glyph: "▶" },
   { to: "/audit", label: "Audit", glyph: "≡" },
   { to: "/settings", label: "Settings", glyph: "⚙" },
@@ -87,7 +88,7 @@ export function Sidebar() {
       >
         ⏻ LOGOUT
       </button>
-      <div className="micro-label border-t border-surface0 px-4 py-2">{"SYS.STATUS // M1"}</div>
+      <div className="micro-label border-t border-surface0 px-4 py-2">{"SYS.STATUS // M3"}</div>
     </aside>
   );
 }

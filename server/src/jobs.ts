@@ -113,13 +113,15 @@ async function fail(jobId: string, output: string): Promise<void> {
   await finishJob(jobId, "failed", output);
 }
 
-// --- SSE hub: one fan-out per job id ---
+// --- SSE hub: one fan-out per job id, plus a global stream for toasts ---
 
 type Listener = (event: string, data: unknown) => void;
 const listeners = new Map<string, Set<Listener>>();
+const globalListeners = new Set<Listener>();
 
 function emit(jobId: string, event: string, data: unknown): void {
   for (const listener of listeners.get(jobId) ?? []) listener(event, data);
+  for (const listener of globalListeners) listener(event, { jobId, ...((data as object) ?? {}) });
 }
 
 /** Subscribe to a job's live events. Returns an unsubscribe function. */
@@ -134,6 +136,12 @@ export function subscribeJob(jobId: string, listener: Listener): () => void {
     set.delete(listener);
     if (set.size === 0) listeners.delete(jobId);
   };
+}
+
+/** Subscribe to every job's live events (job-toast fan-out). */
+export function subscribeAllJobs(listener: Listener): () => void {
+  globalListeners.add(listener);
+  return () => globalListeners.delete(listener);
 }
 
 /** Test hook: wait until the queue drains (all enqueued jobs finish). */

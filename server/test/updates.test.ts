@@ -82,6 +82,14 @@ test("os.update fails loudly with no package manager", async () => {
   expect(execMock).toHaveBeenCalledTimes(1); // never runs an update command
 });
 
+test("os.update surfaces connection failure from the probe", async () => {
+  mockExec(() => ({ ok: false, output: "! yahlm: connection failed: timed out", exitCode: null }));
+  const res = await osUpdate(host);
+  expect(res.ok).toBe(false);
+  expect(res.output).toContain("no supported package manager");
+  expect(res.output).toContain("connection failed"); // not just the PM message
+});
+
 test("os.update failure keeps pm and skips reboot probe", async () => {
   mockExec(osHandler({ updateOk: false }));
   const res = await osUpdate(host);
