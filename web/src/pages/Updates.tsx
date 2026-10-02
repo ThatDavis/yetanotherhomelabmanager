@@ -165,21 +165,18 @@ function PreflightModal({
   schedule: UpdateSchedule | null;
   onClose: () => void;
 }) {
+  return (
+    <Modal title={`RUN // ${schedule?.name ?? ""}`} open={schedule !== null} onClose={onClose}>
+      {schedule && <PreflightBody key={schedule.id} schedule={schedule} onClose={onClose} />}
+    </Modal>
+  );
+}
+
+// Keyed by schedule id above: fresh state per schedule, no reset effect needed.
+function PreflightBody({ schedule, onClose }: { schedule: UpdateSchedule; onClose: () => void }) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setStarting(false);
-    setError(null);
-  }, [schedule]);
-
-  if (!schedule) {
-    return (
-      <Modal title="RUN // SCHEDULE" open={false} onClose={onClose}>
-        {""}
-      </Modal>
-    );
-  }
   const steps = [
     schedule.osUpdates ? "os.update (apt/dnf, conffiles kept)" : null,
     schedule.containerUpdates ? "container.update (docker compose projects)" : null,

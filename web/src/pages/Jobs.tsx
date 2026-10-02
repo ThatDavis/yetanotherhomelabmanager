@@ -132,8 +132,9 @@ function JobDetailModal({
   }, [load]);
 
   // SSE with poll fallback (docs/UI.md §5).
+  const isRunning = job?.status === "running";
   useEffect(() => {
-    if (!jobId || !job || job.status !== "running") return;
+    if (!jobId || !isRunning) return;
     let closed = false;
     const source = new EventSource(`/api/jobs/${jobId}/events`);
     const onStep = (raw: MessageEvent) => {
@@ -166,9 +167,7 @@ function JobDetailModal({
       }
     };
     return () => source.close();
-  }, [jobId, job?.status, load, onChanged]);
-
-  const running = job?.status === "running";
+  }, [jobId, isRunning, load, onChanged]);
 
   return (
     <Modal
@@ -187,13 +186,13 @@ function JobDetailModal({
             />
             <span className="font-mono text-xs text-subtext0">
               {job.trigger} · started {new Date(job.startedAt).toLocaleString()}
-              {running && <span className="text-status-running"> · live</span>}
+              {isRunning && <span className="text-status-running"> · live</span>}
             </span>
           </div>
 
           {job.steps.length === 0 && (
             <p className="font-mono text-sm text-subtext0">
-              {running ? "Waiting for first step…" : "No steps recorded."}
+              {isRunning ? "Waiting for first step…" : "No steps recorded."}
             </p>
           )}
 
