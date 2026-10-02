@@ -197,7 +197,8 @@ const REBOOT_CMD = "systemctl reboot";
 test("host.reboot recovers after transient downtime", async () => {
   let polls = 0;
   mockExec((command: string) => {
-    if (command === REBOOT_CMD) return { ok: false, output: "! connection dropped", exitCode: null };
+    if (command === REBOOT_CMD)
+      return { ok: false, output: "! connection dropped", exitCode: null };
     polls += 1; // health probe
     return polls < 3
       ? { ok: false, output: "! connection refused", exitCode: null }

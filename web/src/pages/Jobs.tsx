@@ -171,7 +171,7 @@ function JobDetailModal({
 
   return (
     <Modal
-      title={`JOB // ${job?.schedule?.name ?? jobId ?? ""}`}
+      title={`${job?.kind === "reboot" ? "REBOOT" : "JOB"} // ${job?.schedule?.name ?? jobId ?? ""}`}
       open={jobId !== null}
       onClose={onClose}
       wide
@@ -204,15 +204,21 @@ function JobDetailModal({
                   onClick={() => setExpanded(expanded === s.id ? null : s.id)}
                   className="flex w-full items-center gap-3 px-3 py-2 text-left font-mono text-sm"
                 >
-                  <span className={s.ok ? "text-status-ok" : "text-status-error"}>
-                    {s.ok ? "✓" : "✕"}
-                  </span>
+                  {s.finishedAt === null ? (
+                    <span className="animate-pulse text-status-running">▶</span>
+                  ) : (
+                    <span className={s.ok ? "text-status-ok" : "text-status-error"}>
+                      {s.ok ? "✓" : "✕"}
+                    </span>
+                  )}
                   <span className="text-text">{s.host?.alias ?? "?"}</span>
                   <span className="text-subtext0">{s.name}</span>
                   <span className="text-subtext0">
-                    {s.durationMs >= 1000
-                      ? `${(s.durationMs / 1000).toFixed(1)}s`
-                      : `${s.durationMs}ms`}
+                    {s.finishedAt === null
+                      ? "running…"
+                      : s.durationMs >= 1000
+                        ? `${(s.durationMs / 1000).toFixed(1)}s`
+                        : `${s.durationMs}ms`}
                   </span>
                   {s.rebootPending && (
                     <span
@@ -226,7 +232,7 @@ function JobDetailModal({
                 </button>
                 {expanded === s.id && (
                   <pre className="max-h-64 overflow-auto border-t border-surface0 p-3 font-mono text-xs whitespace-pre-wrap text-subtext1">
-                    {s.output || "(no output)"}
+                    {s.finishedAt === null ? "(step in progress…)" : s.output || "(no output)"}
                   </pre>
                 )}
               </div>

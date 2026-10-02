@@ -90,21 +90,24 @@ async function runJob(jobId: string): Promise<void> {
   for (const host of schedule.hosts) {
     for (const step of steps) {
       emit(jobId, "step-start", { host: host.alias, name: step.name });
+      const stepRow = await prisma.jobStep.create({
+        data: { jobId, hostId: host.id, name: step.name },
+      });
+      emit(jobId, "step", stepRow);
       const result = await step.fn(host);
       const rebootPending = (result.data as OsUpdateData | undefined)?.rebootPending ?? false;
       if (rebootPending) pendingReboot.add(host.id);
-      const stepRow = await prisma.jobStep.create({
+      const done = await prisma.jobStep.update({
+        where: { id: stepRow.id },
         data: {
-          jobId,
-          hostId: host.id,
-          name: step.name,
           ok: result.ok,
           output: result.output,
           rebootPending,
           durationMs: result.durationMs,
+          finishedAt: new Date(),
         },
       });
-      emit(jobId, "step", stepRow);
+      emit(jobId, "step", done);
       if (!result.ok) allOk = false; // per-host isolation: keep going
     }
   }
@@ -166,18 +169,21 @@ async function runRebootRoll(jobId: string, hosts: Host[]): Promise<void> {
   emit(jobId, "status", { status: "running" });
   for (const host of ordered) {
     emit(jobId, "step-start", { host: host.alias, name: "host.reboot" });
-    const result = await hostReboot(host);
     const stepRow = await prisma.jobStep.create({
+      data: { jobId, hostId: host.id, name: "host.reboot" },
+    });
+    emit(jobId, "step", stepRow);
+    const result = await hostReboot(host);
+    const done = await prisma.jobStep.update({
+      where: { id: stepRow.id },
       data: {
-        jobId,
-        hostId: host.id,
-        name: "host.reboot",
         ok: result.ok,
         output: result.output,
         durationMs: result.durationMs,
+        finishedAt: new Date(),
       },
     });
-    emit(jobId, "step", stepRow);
+    emit(jobId, "step", done);
     if (!result.ok) {
       const remaining = ordered.length - ordered.indexOf(host) - 1;
       await finishJob(

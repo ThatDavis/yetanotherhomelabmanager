@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { api, type Host, type ProbeResult } from "../api";
 import { Drawer } from "../components/Drawer";
 import { GuestInventory } from "../components/GuestInventory";
+import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
 import { StatusBadge } from "../components/StatusBadge";
@@ -11,6 +12,8 @@ type DrawerState =
   | { kind: "add" }
   | { kind: "bootstrap"; host: Host; script: string }
   | { kind: "probe"; host: Host; result: ProbeResult | null; error: string | null }
+  | { kind: "edit"; host: Host }
+  | { kind: "reboot"; host: Host }
   | null;
 
 const inputCls =
@@ -82,17 +85,29 @@ export function Guests() {
                   <th className="py-2 pr-4 font-normal">ALIAS</th>
                   <th className="py-2 pr-4 font-normal">ADDRESS</th>
                   <th className="py-2 pr-4 font-normal">NOTES</th>
+                  <th className="py-2 pr-4 font-normal">BOOT</th>
                   <th className="py-2 font-normal">ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {hosts.map((h) => (
                   <tr key={h.id} className="border-b border-surface0 text-subtext1">
-                    <td className="py-2 pr-4 text-text">{h.alias}</td>
+                    <td className="py-2 pr-4 text-text">
+                      {h.alias}
+                      {h.self && (
+                        <span
+                          className="ml-2 text-status-warn"
+                          title="Runs the app — reboot refused"
+                        >
+                          [SELF]
+                        </span>
+                      )}
+                    </td>
                     <td className="py-2 pr-4">
                       {h.username}@{h.hostname}:{h.port}
                     </td>
                     <td className="py-2 pr-4">{h.notes}</td>
+                    <td className="py-2 pr-4">{h.bootOrder}</td>
                     <td className="py-2">
                       <div className="flex gap-3">
                         <button
@@ -101,6 +116,20 @@ export function Guests() {
                           className="text-sapphire hover:text-text"
                         >
                           PROBE
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDrawer({ kind: "reboot", host: h })}
+                          className="text-subtext0 hover:text-text"
+                        >
+                          REBOOT
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDrawer({ kind: "edit", host: h })}
+                          className="text-subtext0 hover:text-text"
+                        >
+                          EDIT
                         </button>
                         <button
                           type="button"
@@ -133,6 +162,21 @@ export function Guests() {
           setDrawer(null);
           refresh();
         }}
+      />
+
+      <EditHostDrawer
+        open={drawer?.kind === "edit"}
+        host={drawer?.kind === "edit" ? drawer.host : undefined}
+        onClose={() => setDrawer(null)}
+        onSaved={() => {
+          setDrawer(null);
+          refresh();
+        }}
+      />
+
+      <RebootModal
+        host={drawer?.kind === "reboot" ? drawer.host : null}
+        onClose={() => setDrawer(null)}
       />
 
       <Drawer
@@ -256,5 +300,170 @@ function AddHostDrawer({
         </button>
       </form>
     </Drawer>
+  );
+}
+
+function EditHostDrawer({
+  open,
+  host,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  host?: Host;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [notes, setNotes] = useState("");
+  const [self, setSelf] = useState(false);
+  const [bootOrder, setBootOrder] = useState("0");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open && host) {
+      setNotes(host.notes);
+      setSelf(host.self);
+      setBootOrder(String(host.bootOrder));
+      setError(null);
+    }
+  }, [open, host]);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      await api(`/hosts/${host?.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ notes, self, bootOrder: Number(bootOrder) }),
+      });
+      onSaved();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  return (
+    <Drawer title={`EDIT // ${host?.alias ?? ""}`} open={open} onClose={onClose}>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <label className="block">
+          <span className="micro-label">NOTES</span>
+          <input
+            className={`${inputCls} mt-1`}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="micro-label">BOOT ORDER (reboots roll low→high)</span>
+          <input
+            type="number"
+            min={0}
+            max={999}
+            className={`${inputCls} mt-1`}
+            value={bootOrder}
+            onChange={(e) => setBootOrder(e.target.value)}
+            required
+          />
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={self}
+            onChange={(e) => setSelf(e.target.checked)}
+            className="accent-[var(--color-accent)]"
+          />
+          <span className="font-mono text-xs text-subtext1">
+            THIS HOST RUNS THE APP (reboot refused; auto-reboots skip it)
+          </span>
+        </label>
+        {error && <p className="font-mono text-sm text-status-error">{error}</p>}
+        <button
+          type="submit"
+          className="chamfer chamfer-accent px-4 py-2 font-mono text-sm text-accent [--chamfer-bg:color-mix(in_oklab,var(--color-accent)_10%,var(--color-mantle))] hover:[--chamfer-bg:color-mix(in_oklab,var(--color-accent)_20%,var(--color-mantle))]"
+        >
+          SAVE CHANGES
+        </button>
+      </form>
+    </Drawer>
+  );
+}
+
+function RebootModal({ host, onClose }: { host: Host | null; onClose: () => void }) {
+  const [confirmText, setConfirmText] = useState("");
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (host) {
+      setConfirmText("");
+      setStarting(false);
+      setError(null);
+    }
+  }, [host]);
+
+  // Same keyed-remount pattern would be cleaner, but host identity changes on
+  // every refresh() — reset on open transition instead.
+  const isSelf = host?.self ?? false;
+  const canConfirm = confirmText === "REBOOT" && !isSelf && !starting;
+
+  const reboot = async () => {
+    if (!host) return;
+    setStarting(true);
+    setError(null);
+    try {
+      const { jobId } = await api<{ jobId: string }>(`/hosts/${host.id}/reboot`, {
+        method: "POST",
+      });
+      window.location.href = `/jobs?job=${jobId}`;
+    } catch (err) {
+      setError((err as Error).message);
+      setStarting(false);
+    }
+  };
+
+  return (
+    <Modal title={`REBOOT // ${host?.alias ?? ""}`} open={host !== null} onClose={onClose}>
+      {host && (
+        <>
+          {isSelf ? (
+            <p className="mb-3 font-mono text-sm text-status-warn">
+              ⚠ This host runs the app. Rebooting it would kill the orchestrator mid-job — the API
+              refuses. Reboot it manually.
+            </p>
+          ) : (
+            <p className="mb-3 font-mono text-sm text-subtext1">
+              {host.alias} will reboot and the job will wait for it to come back (up to 10 minutes).
+              Type <span className="text-status-error">REBOOT</span> to confirm.
+            </p>
+          )}
+          {!isSelf && (
+            <input
+              className={`${inputCls} mb-3`}
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="REBOOT"
+            />
+          )}
+          {error && <p className="mb-3 font-mono text-sm text-status-error">{error}</p>}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={reboot}
+              disabled={!canConfirm}
+              className="chamfer px-4 py-2 font-mono text-sm text-status-error [--chamfer-line:var(--color-status-error)] [--chamfer-bg:color-mix(in_oklab,var(--color-status-error)_10%,var(--color-mantle))] hover:[--chamfer-bg:color-mix(in_oklab,var(--color-status-error)_20%,var(--color-mantle))] disabled:opacity-50"
+            >
+              {starting ? "STARTING…" : "REBOOT HOST"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="border border-surface1 px-4 py-2 font-mono text-sm text-subtext0 hover:text-text"
+            >
+              CANCEL
+            </button>
+          </div>
+        </>
+      )}
+    </Modal>
   );
 }

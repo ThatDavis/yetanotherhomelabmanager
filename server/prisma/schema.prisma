@@ -201,10 +201,11 @@ model JobStep {
   hostId        String?
   host          Host?    @relation(fields: [hostId], references: [id], onDelete: SetNull)
   name          String // dotted step name, e.g. os.update
-  ok            Boolean
+  ok            Boolean  @default(false) // placeholder until the step finishes
   output        String   @default("")
   rebootPending Boolean  @default(false)
   startedAt     DateTime @default(now())
+  finishedAt    DateTime? // null while the step is running
   durationMs    Int      @default(0)
 
   @@index([jobId])

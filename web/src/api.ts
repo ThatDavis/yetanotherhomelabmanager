@@ -6,6 +6,7 @@ export type Host = {
   username: string;
   notes: string;
   self: boolean;
+  bootOrder: number;
   createdAt: string;
 };
 
@@ -95,6 +96,7 @@ export type UpdateSchedule = {
   timeOfDay: string; // "HH:MM"
   osUpdates: boolean;
   containerUpdates: boolean;
+  rebootAfterUpdate: boolean;
   enabled: boolean;
   lastRunAt: string | null;
   hosts: { id: string; alias: string; hostname: string; self: boolean }[];
@@ -108,13 +110,15 @@ export type JobStep = {
   output: string;
   rebootPending: boolean;
   startedAt: string;
+  finishedAt: string | null; // null while the step is running
   durationMs: number;
   host: { id: string; alias: string; self: boolean } | null;
 };
 
 export type Job = {
   id: string;
-  trigger: "scheduled" | "manual";
+  trigger: "scheduled" | "manual" | "auto";
+  kind: "update" | "reboot";
   status: "running" | "succeeded" | "failed";
   startedAt: string;
   finishedAt: string | null;
