@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { audit } from "../audit.js";
 import { prisma } from "../db.js";
+import { enqueueRebootJob } from "../jobs.js";
 import { bootstrapScript, masterPublicKey } from "../keys.js";
 import { healthCheck } from "../steps.js";
 
@@ -21,6 +22,7 @@ const createHostSchema = z.object({
 const updateHostSchema = z.object({
   notes: z.string().max(500).optional(),
   self: z.boolean().optional(),
+  bootOrder: z.number().int().min(0).max(999).optional(),
 });
 
 export function hostRoutes(app: FastifyInstance) {
@@ -63,9 +65,10 @@ export function hostRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid host", details: parsed.error.issues });
     }
-    const fields: { notes?: string; self?: boolean } = {};
+    const fields: { notes?: string; self?: boolean; bootOrder?: number } = {};
     if (parsed.data.notes !== undefined) fields.notes = parsed.data.notes;
     if (parsed.data.self !== undefined) fields.self = parsed.data.self;
+    if (parsed.data.bootOrder !== undefined) fields.bootOrder = parsed.data.bootOrder;
     const host = await prisma.host.update({ where: { id }, data: fields });
     await audit({
       action: "host.update",
@@ -74,6 +77,25 @@ export function hostRoutes(app: FastifyInstance) {
       ok: true,
     });
     return host;
+  });
+
+  app.post("/api/hosts/:id/reboot", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const host = await prisma.host.findUnique({ where: { id } });
+    if (!host) return reply.code(404).send({ error: "host not found" });
+    if (host.self) {
+      // Rebooting the app's own host would kill the orchestrator mid-job.
+      await audit({
+        action: "host.reboot",
+        target: host.alias,
+        ok: false,
+        output: "refused: this host runs the app — reboot it manually",
+      });
+      return reply.code(409).send({ error: "this host runs the app — reboot refused" });
+    }
+    const jobId = await enqueueRebootJob([host.id], "manual");
+    await audit({ action: "host.reboot", target: host.alias, params: { manual: true }, ok: true });
+    return reply.code(202).send({ jobId });
   });
 
   app.delete("/api/hosts/:id", async (req, reply) => {

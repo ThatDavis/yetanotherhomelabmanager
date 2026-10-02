@@ -310,3 +310,26 @@ test("update job with rebootAfterUpdate rolls only pending hosts; self host skip
   expect(skipAudit?.ok).toBe(true);
   expect(skipAudit?.output).toContain("skipped");
 });
+
+test("manual reboot API enqueues a reboot job", async () => {
+  const host = await makeRebootHost(`test-jobhost-api-${Date.now()}`, 0);
+  rebootMock.mockResolvedValue(REBOOT_OK);
+
+  const res = await app.inject({ method: "POST", url: `/api/hosts/${host.id}/reboot` });
+  expect(res.statusCode).toBe(202);
+  await drainQueue();
+
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: res.json().jobId },
+    include: { steps: true, hosts: true },
+  });
+  expect(job.kind).toBe("reboot");
+  expect(job.trigger).toBe("manual");
+  expect(job.status).toBe("succeeded");
+  expect(job.hosts.map((h) => h.id)).toEqual([host.id]);
+
+  const audited = await prisma.auditEntry.findFirst({
+    where: { action: "host.reboot", target: host.alias, ok: true },
+  });
+  expect(audited).not.toBeNull();
+});

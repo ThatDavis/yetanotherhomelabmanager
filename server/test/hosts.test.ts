@@ -68,3 +68,26 @@ test("probe on missing host returns 404", async () => {
   const res = await app.inject({ method: "POST", url: "/api/hosts/nope/probe" });
   expect(res.statusCode).toBe(404);
 });
+
+test("reboot on missing host returns 404", async () => {
+  const res = await app.inject({ method: "POST", url: "/api/hosts/nope/reboot" });
+  expect(res.statusCode).toBe(404);
+});
+
+test("reboot of the self host is refused and audited", async () => {
+  const created = await app.inject({
+    method: "POST",
+    url: "/api/hosts",
+    payload: { ...host, alias: "test-self-host", self: true },
+  });
+  const id = created.json().id;
+  const res = await app.inject({ method: "POST", url: `/api/hosts/${id}/reboot` });
+  expect(res.statusCode).toBe(409);
+
+  const row = await prisma.auditEntry.findFirst({
+    where: { action: "host.reboot", target: "test-self-host" },
+  });
+  expect(row?.ok).toBe(false);
+  expect(row?.output).toContain("refused");
+  await prisma.host.delete({ where: { id } });
+});
