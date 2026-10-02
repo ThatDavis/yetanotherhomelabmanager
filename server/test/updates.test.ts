@@ -3,7 +3,7 @@ import type { Host } from "@prisma/client";
 import { afterEach, expect, test, vi } from "vitest";
 import { prisma } from "../src/db.js";
 import { execOnHost } from "../src/executor.js";
-import { containerUpdate, osUpdate } from "../src/updates.js";
+import { containerUpdate, hostReboot, osUpdate } from "../src/updates.js";
 
 vi.mock("../src/executor.js", () => ({
   execOnHost: vi.fn(),
@@ -19,6 +19,7 @@ const host: Host = {
   username: "root",
   notes: "",
   self: false,
+  bootOrder: 0,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -187,4 +188,47 @@ test("container.update fails on non-JSON compose ls output", async () => {
   const res = await containerUpdate(host);
   expect(res.ok).toBe(false);
   expect(res.output).toContain("not JSON");
+});
+
+// --- host.reboot (M3.2) ---
+
+const REBOOT_CMD = "systemctl reboot";
+
+test("host.reboot recovers after transient downtime", async () => {
+  let polls = 0;
+  mockExec((command: string) => {
+    if (command === REBOOT_CMD) return { ok: false, output: "! connection dropped", exitCode: null };
+    polls += 1; // health probe
+    return polls < 3
+      ? { ok: false, output: "! connection refused", exitCode: null }
+      : { ok: true, output: "Linux 6.8 up", exitCode: 0 };
+  });
+  const res = await hostReboot(host, { pollMs: 1, timeoutMs: 5000 });
+  expect(res.ok).toBe(true);
+  expect(res.data).toEqual({ recovered: true });
+  expect(polls).toBe(3); // kept polling through the outage
+});
+
+test("host.reboot fails when the host never comes back", async () => {
+  mockExec((command: string) => {
+    if (command === REBOOT_CMD) return { ok: true, output: "", exitCode: 0 };
+    return { ok: false, output: "! connection refused", exitCode: null };
+  });
+  const res = await hostReboot(host, { pollMs: 1, timeoutMs: 100 });
+  expect(res.ok).toBe(false);
+  expect(res.data).toEqual({ recovered: false });
+  expect(res.output).toContain("did not recover");
+});
+
+test("host.reboot is audited", async () => {
+  mockExec((command: string) =>
+    command === REBOOT_CMD
+      ? { ok: true, output: "", exitCode: 0 }
+      : { ok: true, output: "up", exitCode: 0 },
+  );
+  await hostReboot(host, { pollMs: 1, timeoutMs: 5000 });
+  const row = await prisma.auditEntry.findFirst({
+    where: { action: "host.reboot", target: host.alias },
+  });
+  expect(row?.ok).toBe(true);
 });

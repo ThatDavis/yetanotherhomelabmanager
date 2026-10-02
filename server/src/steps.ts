@@ -47,7 +47,7 @@ export async function runStep(
 
 // health.check — fixed safe probe (no raw exec endpoint; principle 9).
 // sh-compatible only: must run on Debian, RHEL, and busybox-ish guests.
-const HEALTH_CHECK_CMD = "uname -srm; uptime; df -h /; free -m";
+export const HEALTH_CHECK_CMD = "uname -srm; uptime; df -h /; free -m";
 
 export type HealthCheckData = { lines: OutputLine[]; exitCode: number | null };
 
