@@ -138,6 +138,8 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ## [DISCOVERIES]
 
+- 2026-10-01: CI runs `biome check .` from the repo root (85 files, stricter than per-package runs) — it flagged useExhaustiveDependencies errors that `biome check src` inside web/ did not surface. Always run lint from the repo root before pushing; the DoD lint step must use `biome check .`.
+
 - 2026-09-28: Passkeys (WebAuthn) hard-require HTTPS + stable hostname — deployment must sit behind the operator's existing proxy/CA; RP_ID/ORIGIN env must match exactly (top M1 failure mode).
 - 2026-09-28: MASTER_KEY loss = unrecoverable secrets; backup documented in .env.example; app refuses to start in production without it.
 - 2026-09-28: Docker not available on the dev workstation — compose stack verified statically; runtime deploy verification must happen on the homelab.
