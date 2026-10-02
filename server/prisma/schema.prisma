@@ -15,7 +15,8 @@ model Host {
   port      Int      @default(22)
   username  String
   notes     String   @default("")
-  self      Boolean  @default(false) // true if this host runs the app (reboot deferred, M3.2)
+  self      Boolean  @default(false) // true if this host runs the app (reboot refused, M3.2)
+  bootOrder Int      @default(0) // reboot rolls go low→high (dependency ordering)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -163,6 +164,7 @@ model UpdateSchedule {
   timeOfDay        String // "HH:MM", server-local time
   osUpdates        Boolean  @default(true)
   containerUpdates Boolean  @default(false)
+  rebootAfterUpdate Boolean @default(false) // reboot hosts flagged reboot-pending when the update job ends
   enabled          Boolean  @default(true)
   lastRunAt        DateTime?
   createdAt        DateTime @default(now())
