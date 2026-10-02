@@ -29,7 +29,8 @@
 - [x] Alerting on failed checks
 
 ### Milestone 3: Updates
-- [ ] Update scheduling for PVE/PBS host OS (apt), guest OS (Debian/RHEL/mixed via SSH), and containers in guests
+**Status:** In Progress (started 2026-10-01)
+- [x] **M3.1: Update scheduling** (Issue #20, branch `feature/20-update-scheduling`, PR #21) — weekly schedules, os.update (apt/dnf) + container.update (compose), job engine with SSE live status, run-now with pre-flight; see docs/SPEC.md §Milestone 3
 - [ ] Reboot orchestration
 - [ ] Post-update verification (health checks before/after)
 - [ ] Email reports after jobs complete (external SMTP relay)
@@ -53,10 +54,11 @@
 
 ## Active Feature
 
-*No active feature. Run `/dev:start-feature` to begin.*
+*None. Run `/dev:start-feature` to begin — next up: M3.2 reboot orchestration.*
 
 ## Completed Features
 
+- **Update scheduling (M3.1)** (Milestone 3, 2026-10-01) — weekly schedules, job engine with SSE live status + toasts, os.update (apt/dnf, reboot-pending) + container.update (compose-only), pre-flight run-now, Host.self flag (issue #20, PR #21)
 - **App shell** (Milestone 1, 2026-09-29) — Catppuccin Mocha themed sidebar shell, react-router, dashboard, production SPA serving
 - **Guest host registration + SSH executor** (Milestone 1, 2026-09-30) — master keypair + bootstrap, step contract with mandatory audit, health.check probe, Guests UI (issue #2)
 - **PVE/PBS node registration + connection test** (Milestone 1, 2026-09-30) — encrypted API tokens, TOFU fingerprint pinning, node.test probe (issue #4)

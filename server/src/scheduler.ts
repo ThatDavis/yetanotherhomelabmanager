@@ -1,17 +1,22 @@
 import { prisma } from "./db.js";
+import { enqueueUpdateJob } from "./jobs.js";
 import { nodeTest, pingCheck } from "./steps.js";
 
 // In-process, DB-driven check scheduler. One staggered timer per enabled
 // target; rescheduled after every tick and after any target CRUD.
+// Update schedules are checked on a fixed tick against day-of-week + time.
 // Started explicitly from the server entry point (never in tests).
 
 const timers = new Map<string, NodeJS.Timeout>();
 let pruneTimer: NodeJS.Timeout | null = null;
 let nodeTimer: NodeJS.Timeout | null = null;
+let updateTimer: NodeJS.Timeout | null = null;
 
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000; // hourly
 const NODE_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const UPDATE_TICK_MS = 30 * 1000; // 30 seconds
+let updateTickRunning = false;
 
 async function tick(targetId: string): Promise<void> {
   const target = await prisma.pingTarget.findUnique({ where: { id: targetId } });
@@ -43,6 +48,31 @@ export async function startScheduler(): Promise<void> {
   nodeTimer = setInterval(checkAllNodes, NODE_CHECK_INTERVAL_MS);
   nodeTimer.unref();
   void checkAllNodes();
+  updateTimer = setInterval(() => void checkUpdateSchedules(), UPDATE_TICK_MS);
+  updateTimer.unref();
+  void checkUpdateSchedules();
+}
+
+// Fire every enabled schedule whose day+time matches now and that has not run
+// yet today (scheduled runs stamp lastRunAt when the job finishes).
+export async function checkUpdateSchedules(): Promise<void> {
+  if (updateTickRunning) return;
+  updateTickRunning = true;
+  try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const due = await prisma.updateSchedule.findMany({
+      where: { enabled: true, daysOfWeek: { has: now.getDay() }, timeOfDay: hhmm },
+    });
+    for (const schedule of due) {
+      if (schedule.lastRunAt && schedule.lastRunAt >= today) continue;
+      await prisma.updateSchedule.update({ where: { id: schedule.id }, data: { lastRunAt: now } });
+      await enqueueUpdateJob(schedule.id, "scheduled");
+    }
+  } finally {
+    updateTickRunning = false;
+  }
 }
 
 async function checkAllNodes(): Promise<void> {
@@ -57,8 +87,10 @@ export function stopScheduler(): void {
   timers.clear();
   clearInterval(pruneTimer ?? undefined);
   clearInterval(nodeTimer ?? undefined);
+  clearInterval(updateTimer ?? undefined);
   pruneTimer = null;
   nodeTimer = null;
+  updateTimer = null;
 }
 
 async function pruneOldResults(): Promise<void> {

@@ -15,8 +15,12 @@ model Host {
   port      Int      @default(22)
   username  String
   notes     String   @default("")
+  self      Boolean  @default(false) // true if this host runs the app (reboot deferred, M3.2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  schedules UpdateSchedule[]
+  jobSteps  JobStep[]
 }
 
 // Append-only audit trail. One row per step execution or mutating API action.
@@ -147,4 +151,56 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// A recurring update schedule: weekly day(s) + time of day, scoped to hosts.
+// PVE/PBS nodes are registered as Hosts to receive OS updates (SSH; the
+// Proxmox API has no apt endpoint).
+model UpdateSchedule {
+  id               String   @id @default(cuid())
+  name             String   @unique
+  daysOfWeek       Int[] // 0=Sunday .. 6=Saturday
+  timeOfDay        String // "HH:MM", server-local time
+  osUpdates        Boolean  @default(true)
+  containerUpdates Boolean  @default(false)
+  enabled          Boolean  @default(true)
+  lastRunAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  hosts Host[]
+  jobs  Job[]
+}
+
+// One execution of an update schedule (trigger="scheduled") or a manual run
+// (trigger="manual"). Steps run sequentially per host; one host failing does
+// not stop the job.
+model Job {
+  id         String    @id @default(cuid())
+  trigger    String // scheduled | manual
+  status     String    @default("running") // running | succeeded | failed
+  scheduleId String?
+  schedule   UpdateSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  steps JobStep[]
+}
+
+// One step within a job, tied to the host it ran on. Output is the combined
+// tagged stream; rebootPending flags hosts needing a reboot (M3.2 acts on it).
+model JobStep {
+  id            String   @id @default(cuid())
+  jobId         String
+  job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  hostId        String?
+  host          Host?    @relation(fields: [hostId], references: [id], onDelete: SetNull)
+  name          String // dotted step name, e.g. os.update
+  ok            Boolean
+  output        String   @default("")
+  rebootPending Boolean  @default(false)
+  startedAt     DateTime @default(now())
+  durationMs    Int      @default(0)
+
+  @@index([jobId])
 }
