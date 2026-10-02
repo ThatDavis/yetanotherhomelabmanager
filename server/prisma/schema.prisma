@@ -22,6 +22,7 @@ model Host {
 
   schedules UpdateSchedule[]
   jobSteps  JobStep[]
+  jobs      Job[]
 }
 
 // Append-only audit trail. One row per step execution or mutating API action.
@@ -179,7 +180,8 @@ model UpdateSchedule {
 // not stop the job.
 model Job {
   id         String    @id @default(cuid())
-  trigger    String // scheduled | manual
+  trigger    String // scheduled | manual | auto (auto = reboot roll after an update job)
+  kind       String    @default("update") // update | reboot
   status     String    @default("running") // running | succeeded | failed
   scheduleId String?
   schedule   UpdateSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
@@ -187,6 +189,7 @@ model Job {
   finishedAt DateTime?
 
   steps JobStep[]
+  hosts Host[] // explicit scope for reboot jobs; update jobs use schedule.hosts
 }
 
 // One step within a job, tied to the host it ran on. Output is the combined

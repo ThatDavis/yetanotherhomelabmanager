@@ -1,6 +1,7 @@
 import type { Host } from "@prisma/client";
+import { audit } from "./audit.js";
 import { prisma } from "./db.js";
-import { containerUpdate, type OsUpdateData, osUpdate } from "./updates.js";
+import { containerUpdate, hostReboot, type OsUpdateData, osUpdate } from "./updates.js";
 
 // Job runner (M3.1). One job runs at a time (rolling updates); a manual run
 // while another job is active waits in the queue. State lives in the DB —
@@ -28,6 +29,25 @@ export async function enqueueUpdateJob(
   return job.id;
 }
 
+/** Create a reboot Job over an explicit host set and enqueue it. */
+export async function enqueueRebootJob(
+  hostIds: string[],
+  trigger: "manual" | "auto",
+  scheduleId?: string,
+): Promise<string> {
+  const job = await prisma.job.create({
+    data: {
+      kind: "reboot",
+      trigger,
+      ...(scheduleId !== undefined ? { scheduleId } : {}),
+      hosts: { connect: hostIds.map((id) => ({ id })) },
+    },
+  });
+  queue.push(job.id);
+  void pump();
+  return job.id;
+}
+
 async function pump(): Promise<void> {
   if (running) return;
   const next = queue.shift();
@@ -48,8 +68,15 @@ async function pump(): Promise<void> {
 async function runJob(jobId: string): Promise<void> {
   const job = await prisma.job.findUniqueOrThrow({
     where: { id: jobId },
-    include: { schedule: { include: { hosts: { orderBy: { alias: "asc" } } } } },
+    include: {
+      schedule: { include: { hosts: { orderBy: { alias: "asc" } } } },
+      hosts: true,
+    },
   });
+  if (job.kind === "reboot") {
+    await runRebootRoll(job.id, job.hosts);
+    return;
+  }
   const schedule = job.schedule;
   if (!schedule) {
     await fail(jobId, "schedule was deleted before the job ran");
@@ -58,12 +85,14 @@ async function runJob(jobId: string): Promise<void> {
 
   emit(jobId, "status", { status: "running" });
   let allOk = true;
+  const pendingReboot = new Set<string>();
   const steps = PLANNED_STEPS.filter((s) => schedule[s.toggle]);
   for (const host of schedule.hosts) {
     for (const step of steps) {
       emit(jobId, "step-start", { host: host.alias, name: step.name });
       const result = await step.fn(host);
       const rebootPending = (result.data as OsUpdateData | undefined)?.rebootPending ?? false;
+      if (rebootPending) pendingReboot.add(host.id);
       const stepRow = await prisma.jobStep.create({
         data: {
           jobId,
@@ -93,6 +122,74 @@ async function runJob(jobId: string): Promise<void> {
     }
   }
   emit(jobId, "status", { status });
+
+  // Opt-in reboot roll: reboot hosts the updates flagged, in boot order.
+  if (schedule.rebootAfterUpdate) {
+    await scheduleRebootRoll(job, schedule.id, schedule.hosts, pendingReboot);
+  }
+}
+
+// Self hosts are never auto-rebooted (the orchestrator would kill itself);
+// the skip is audited so the operator sees it in the job trail.
+async function scheduleRebootRoll(
+  job: { id: string; trigger: string },
+  scheduleId: string,
+  hosts: Host[],
+  pendingReboot: Set<string>,
+): Promise<void> {
+  const roll: string[] = [];
+  for (const host of hosts) {
+    if (!pendingReboot.has(host.id)) continue;
+    if (host.self) {
+      await audit({
+        action: "host.reboot",
+        target: host.alias,
+        ok: true,
+        output: "skipped: self host — reboot refused; reboot it manually",
+      });
+      continue;
+    }
+    roll.push(host.id);
+  }
+  if (roll.length > 0) {
+    await enqueueRebootJob(roll, job.trigger === "manual" ? "manual" : "auto", scheduleId);
+  }
+}
+
+// Rolling reboot (M3.2): hosts go down one at a time, low bootOrder first;
+// a host must come back before the next one reboots. A failed recovery
+// aborts the roll — already-rebooted hosts are not re-touched.
+async function runRebootRoll(jobId: string, hosts: Host[]): Promise<void> {
+  const ordered = [...hosts].sort(
+    (a, b) => a.bootOrder - b.bootOrder || a.alias.localeCompare(b.alias),
+  );
+  emit(jobId, "status", { status: "running" });
+  for (const host of ordered) {
+    emit(jobId, "step-start", { host: host.alias, name: "host.reboot" });
+    const result = await hostReboot(host);
+    const stepRow = await prisma.jobStep.create({
+      data: {
+        jobId,
+        hostId: host.id,
+        name: "host.reboot",
+        ok: result.ok,
+        output: result.output,
+        durationMs: result.durationMs,
+      },
+    });
+    emit(jobId, "step", stepRow);
+    if (!result.ok) {
+      const remaining = ordered.length - ordered.indexOf(host) - 1;
+      await finishJob(
+        jobId,
+        "failed",
+        `roll aborted: ${host.alias} did not recover; ${remaining} host(s) skipped`,
+      );
+      return;
+    }
+  }
+  await finishJob(jobId, "succeeded");
+  emit(jobId, "status", { status: "succeeded" });
 }
 
 // P2025 = the job row was deleted mid-run (same deleted-mid-check race as
