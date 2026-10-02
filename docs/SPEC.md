@@ -1,6 +1,6 @@
 # Specification — Yet Another Home Lab Manager
 
-> Last updated: 2026-10-01
+> Last updated: 2026-10-02
 
 ## Overview
 
@@ -90,6 +90,17 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 - [ ] `self` flag on Host marks the host that runs the app; UI warns that its reboot is deferred to M3.2 (resolves the self-host open question by design: works either way)
 - [ ] Every job and step is audited via the existing step contract
 - [ ] Tests green (steps via mocked executor, scheduler trigger, API)
+
+#### Feature: Reboot orchestration (M3.2)
+**Description:** Hosts that finish an update with rebootPending get rebooted in a controlled roll: one at a time, in per-host boot order (dependency ordering — hosts that must come up first get a lower order), each verified back up (SSH reachable + health.check) before the next host reboots. Triggered automatically after update jobs when the schedule opts in, or manually per host. The self host is never auto-rebooted and manual reboot of it is refused — rebooting the app's own host mid-job would kill the orchestrator.
+**Acceptance Criteria:**
+- [ ] Update schedules have a reboot-if-pending toggle; when on, update jobs reboot flagged hosts afterwards
+- [ ] Manual per-host reboot action with pre-flight confirmation
+- [ ] Rolling reboots: hosts reboot in bootOrder sequence; a host must recover (SSH + health.check) within a timeout before the next host reboots
+- [ ] A host failing to recover aborts the remaining hosts in that job (already-rebooted hosts are not re-touched)
+- [ ] Self host: skipped in auto-reboots (audited, with warning); manual reboot request refused with a clear error
+- [ ] Every reboot and recovery probe audited via the step contract; job center shows reboot steps with live status
+- [ ] Tests green (steps via mocked executor, ordering, abort-on-failed-recovery, self-host guards)
 
 ---
 
