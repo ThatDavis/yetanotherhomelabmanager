@@ -81,26 +81,26 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 #### Feature: Update scheduling (M3.1)
 **Description:** Operator defines update schedules (weekly day(s) + time) scoped to registered hosts — including PVE/PBS nodes registered as SSH hosts for this purpose. A scheduler triggers jobs automatically; manual run-now is available behind a pre-flight summary. Jobs run as background jobs with live status, per-step audit, and per-host failure isolation. Covers OS updates (apt/dnf auto-detected) and Docker container updates (compose projects). Reboot orchestration (M3.2), post-update verification (M3.3), and email reports (M3.4) build on this job engine.
 **Acceptance Criteria:**
-- [ ] Schedule CRUD: weekly day(s)-of-week + time, host scope multi-select, separate toggles for OS updates and container updates, enabled flag
-- [ ] Scheduler auto-triggers jobs at the scheduled time; manual "run now" gated by a pre-flight summary (what will happen, on which targets — UI.md §5)
-- [ ] `os.update` auto-detects package manager (apt/dnf), applies updates, returns combined tagged output; failure on one host does not stop the job
-- [ ] `container.update` updates Docker Compose projects on scoped hosts; standalone containers are listed but untouched
-- [ ] Job engine: persistent Job/JobStep records, job-center UI per UI.md §5, live status via SSE (poll fallback), toast on completion/failure
-- [ ] Reboot-pending is surfaced per host in job results (reboot-required flag / needs-restarting) — reboot itself is M3.2
-- [ ] `self` flag on Host marks the host that runs the app; UI warns that its reboot is deferred to M3.2 (resolves the self-host open question by design: works either way)
-- [ ] Every job and step is audited via the existing step contract
-- [ ] Tests green (steps via mocked executor, scheduler trigger, API)
+- [x] Schedule CRUD: weekly day(s)-of-week + time, host scope multi-select, separate toggles for OS updates and container updates, enabled flag
+- [x] Scheduler auto-triggers jobs at the scheduled time; manual "run now" gated by a pre-flight summary (what will happen, on which targets — UI.md §5)
+- [x] `os.update` auto-detects package manager (apt/dnf), applies updates, returns combined tagged output; failure on one host does not stop the job
+- [x] `container.update` updates Docker Compose projects on scoped hosts; standalone containers are listed but untouched
+- [x] Job engine: persistent Job/JobStep records, job-center UI per UI.md §5, live status via SSE (poll fallback), toast on completion/failure
+- [x] Reboot-pending is surfaced per host in job results (reboot-required flag / needs-restarting) — reboot itself is M3.2
+- [x] `self` flag on Host marks the host that runs the app; UI warns that its reboot is deferred to M3.2 (resolves the self-host open question by design: works either way)
+- [x] Every job and step is audited via the existing step contract
+- [x] Tests green (steps via mocked executor, scheduler trigger, API)
 
 #### Feature: Reboot orchestration (M3.2)
 **Description:** Hosts that finish an update with rebootPending get rebooted in a controlled roll: one at a time, in per-host boot order (dependency ordering — hosts that must come up first get a lower order), each verified back up (SSH reachable + health.check) before the next host reboots. Triggered automatically after update jobs when the schedule opts in, or manually per host. The self host is never auto-rebooted and manual reboot of it is refused — rebooting the app's own host mid-job would kill the orchestrator.
 **Acceptance Criteria:**
-- [ ] Update schedules have a reboot-if-pending toggle; when on, update jobs reboot flagged hosts afterwards
-- [ ] Manual per-host reboot action with pre-flight confirmation
-- [ ] Rolling reboots: hosts reboot in bootOrder sequence; a host must recover (SSH + health.check) within a timeout before the next host reboots
-- [ ] A host failing to recover aborts the remaining hosts in that job (already-rebooted hosts are not re-touched)
-- [ ] Self host: skipped in auto-reboots (audited, with warning); manual reboot request refused with a clear error
-- [ ] Every reboot and recovery probe audited via the step contract; job center shows reboot steps with live status
-- [ ] Tests green (steps via mocked executor, ordering, abort-on-failed-recovery, self-host guards)
+- [x] Update schedules have a reboot-if-pending toggle; when on, update jobs reboot flagged hosts afterwards
+- [x] Manual per-host reboot action with pre-flight confirmation
+- [x] Rolling reboots: hosts reboot in bootOrder sequence; a host must recover (SSH + health.check) within a timeout before the next host reboots
+- [x] A host failing to recover aborts the remaining hosts in that job (already-rebooted hosts are not re-touched)
+- [x] Self host: skipped in auto-reboots (audited, with warning); manual reboot request refused with a clear error
+- [x] Every reboot and recovery probe audited via the step contract; job center shows reboot steps with live status
+- [x] Tests green (steps via mocked executor, ordering, abort-on-failed-recovery, self-host guards)
 
 ---
 

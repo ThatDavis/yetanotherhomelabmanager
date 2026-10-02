@@ -138,11 +138,12 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ Built: UpdateSchedule/Job/JobStep models (+Host.self); updates.ts (os.update apt/dnf + reboot probe, container.update compose-only); jobs.ts runner (serial queue, continue-on-failure, deleted-mid-job guard, per-job + global SSE); schedules API + weekly scheduler tick; Updates page, Jobs job center, toasts (server 74/74, web 12/12); browser-verified full flow incl. live SSE step + toast |
 | 2026-10-01 | Completed feature: Update scheduling (M3.1, PR #21). DoD all PASS (1 WARN: no web component tests for new pages, matches convention); live browser verification; real-host run pending on homelab. |
 | 2026-10-01 | Started feature: Reboot orchestration (M3.2, Issue #22) on branch feature/22-reboot-orchestration. Deep-plan validated: bootOrder rolling with recovery gate, abort on non-recovery, self-host refused. |
-|  |    — Schema: Host.bootOrder, UpdateSchedule.rebootAfterUpdate, migration |
-|  |    — host.reboot step (send + poll recovery w/ health.check, 10-min timeout), mocked tests |
-|  |    — Reboot rolls in jobs.ts (bootOrder sort, recovery gate, abort on failure, self skip) + manual reboot job |
-|  |    — API: schedule toggle, POST /api/hosts/:id/reboot (self refused), hosts PATCH bootOrder |
-|  |    — UI: schedule toggle, Guests bootOrder + REBOOT typed-confirm, job center reboot steps |
+|  |    ✓ Schema: Host.bootOrder, UpdateSchedule.rebootAfterUpdate, migration |
+|  |    ✓ host.reboot step (send + poll recovery w/ health.check, 10-min timeout), mocked tests |
+|  |    ✓ Reboot rolls in jobs.ts (bootOrder sort, recovery gate, abort on failure, self skip) + manual reboot job |
+|  |    ✓ API: schedule toggle, POST /api/hosts/:id/reboot (self refused), hosts PATCH bootOrder |
+|  |    ✓ UI: schedule toggle, Guests bootOrder + REBOOT typed-confirm, job center reboot steps |
+|  |    ✓ Built: Host.bootOrder + UpdateSchedule.rebootAfterUpdate + Job.kind/_HostToJob (+JobStep.finishedAt/ok default for running rows); host.reboot step (send + 10-min recovery poll via health.check); rolling rolls low→high bootOrder with abort-on-non-recovery; self host auto-skip (audited) + manual refusal (409); Guests EDIT drawer (notes/self/bootOrder) + typed-confirm REBOOT modal; browser-verified incl. live running-step rows (server 83/83, web 12/12) |
 
 ## [DISCOVERIES]
 
