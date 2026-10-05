@@ -24,6 +24,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 ### Milestone 3: Updates (In Progress)
 Goal: Scheduled updates with reboot orchestration, post-update verification, email reports.
 - [x] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
+- [x] M3.2: Reboot orchestration (Issue #22, branch feature/22-reboot-orchestration)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -32,6 +33,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ## [DECISIONS]
 
+- 2026-10-01: Deep-plan validated M3.2 reboot orchestration. Key decisions: rolling reboots in Host.bootOrder sequence (boring strict order instead of a DAG — covers "X must come up first"); recovery gate = SSH reachable + health.check within 10 min before next host; abort roll on non-recovery, never re-touch rebooted hosts; UpdateSchedule.rebootAfterUpdate toggle drives auto-reboot after update jobs; manual per-host reboot via pre-flight-confirmed API; self host never auto-reboots (audited skip) and manual reboot refused (would kill the orchestrator). All work rides the M3.1 job engine.
 - 2026-10-01: Deep-plan validated M3.1 update scheduling. Key decisions: PVE/PBS host OS updated via SSH (Proxmox API has no apt endpoint) — operator registers nodes as Hosts, no SSH fields on Node model; containers-in-guests included in M3.1 scope (docker compose projects only, standalone untouched); job engine (Job/JobStep + in-process runner + SSE/poll) is the core new primitive; schedules are weekly day(s)+time with OS/container toggles; per-host failure isolation + reboot-pending surfaced (reboot is M3.2); self-host open question resolved by `self` flag on Host.
 
 - 2026-10-01: Deep-plan validated M2.3 notifications. Key decisions: DB-backed webhooks (editable without container restart) + Alerts UI section; per-target channel pick (email checkbox + webhook multi-select, m-n relation); node transitions alert via all enabled channels; SMTP creds stay in env (email enable flag is a DB setting); per-target notify default OFF; send failures audited as notify.fail, never affect check StepResult.ok.
@@ -135,6 +137,14 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ UI: Updates page (schedule editor + pre-flight) + job center live status |
 |  |    ✓ Built: UpdateSchedule/Job/JobStep models (+Host.self); updates.ts (os.update apt/dnf + reboot probe, container.update compose-only); jobs.ts runner (serial queue, continue-on-failure, deleted-mid-job guard, per-job + global SSE); schedules API + weekly scheduler tick; Updates page, Jobs job center, toasts (server 74/74, web 12/12); browser-verified full flow incl. live SSE step + toast |
 | 2026-10-01 | Completed feature: Update scheduling (M3.1, PR #21). DoD all PASS (1 WARN: no web component tests for new pages, matches convention); live browser verification; real-host run pending on homelab. |
+| 2026-10-01 | Started feature: Reboot orchestration (M3.2, Issue #22) on branch feature/22-reboot-orchestration. Deep-plan validated: bootOrder rolling with recovery gate, abort on non-recovery, self-host refused. |
+|  |    ✓ Schema: Host.bootOrder, UpdateSchedule.rebootAfterUpdate, migration |
+|  |    ✓ host.reboot step (send + poll recovery w/ health.check, 10-min timeout), mocked tests |
+|  |    ✓ Reboot rolls in jobs.ts (bootOrder sort, recovery gate, abort on failure, self skip) + manual reboot job |
+|  |    ✓ API: schedule toggle, POST /api/hosts/:id/reboot (self refused), hosts PATCH bootOrder |
+|  |    ✓ UI: schedule toggle, Guests bootOrder + REBOOT typed-confirm, job center reboot steps |
+|  |    ✓ Built: Host.bootOrder + UpdateSchedule.rebootAfterUpdate + Job.kind/_HostToJob (+JobStep.finishedAt/ok default for running rows); host.reboot step (send + 10-min recovery poll via health.check); rolling rolls low→high bootOrder with abort-on-non-recovery; self host auto-skip (audited) + manual refusal (409); Guests EDIT drawer (notes/self/bootOrder) + typed-confirm REBOOT modal; browser-verified incl. live running-step rows (server 83/83, web 12/12) |
+| 2026-10-04 | Completed feature: Reboot orchestration (M3.2, PR #23). DoD all PASS (1 WARN: no web component tests, matches convention); browser-verified; real recovery cycle pending on homelab. Note: dev DB is podman container yahlm-pg — start it before tests. |
 
 ## [DISCOVERIES]
 
@@ -179,6 +189,11 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ### Live dashboard + Uptime tab (M2.2, 2026-10-01)
 - Dashboard went live: summary cards, node liveness (scheduler-driven node tests), recent activity, target strips; config split into the Uptime tab (uptime %, detail modal with SVG latency graph); sidebar chip now real worst-status. Immediately surfaced a real signal (defiant DOWN).
+
+### Reboot orchestration (M3.2, 2026-10-04)
+- Rolling reboots ride the M3.1 job engine: `host.reboot` step (send + 10-min recovery poll via health.check), rolls ordered by Host.bootOrder with a recovery gate between hosts, abort-on-non-recovery (rebooted hosts never re-touched). Triggers: schedule-level rebootAfterUpdate toggle (auto roll of pending hosts, trigger "auto") + manual per-host reboot (typed-confirm, trigger "manual"). Self host: audited auto-skip + API refusal (409) — rebooting the app's own host would kill the orchestrator.
+- JobStep rows now persist from step start (finishedAt null = running) so in-progress steps (e.g. the 10-min reboot poll) are visible live in the job center — two small migrations (finishedAt, ok default).
+- Browser-verified: Guests BOOT/[SELF]/REBOOT/EDIT surfaces, self-refusal, typed-confirm → live running step (PR #23).
 
 ### Update scheduling (M3.1, 2026-10-01)
 - Weekly update schedules (day(s)+time, host scope, separate OS/container toggles) firing as persistent background jobs via a serial in-process runner (Job/JobStep DB rows); per-host failure isolation; per-job + global SSE; job center UI with live status, pre-flight summary before manual runs, completion toasts.

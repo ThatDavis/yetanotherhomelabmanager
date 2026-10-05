@@ -3,13 +3,22 @@ import { afterEach, expect, test, vi } from "vitest";
 import { buildServer } from "../src/app.js";
 import { prisma } from "../src/db.js";
 import { execOnHost } from "../src/executor.js";
-import { drainQueue, enqueueUpdateJob } from "../src/jobs.js";
+import { drainQueue, enqueueRebootJob, enqueueUpdateJob } from "../src/jobs.js";
+import { hostReboot } from "../src/updates.js";
 
 vi.mock("../src/executor.js", () => ({
   execOnHost: vi.fn(),
 }));
 
+// Roll tests exercise ordering/abort logic, not reboot internals —
+// host.reboot itself is covered in updates.test.ts.
+vi.mock("../src/updates.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/updates.js")>();
+  return { ...actual, hostReboot: vi.fn() };
+});
+
 const execMock = vi.mocked(execOnHost);
+const rebootMock = vi.mocked(hostReboot);
 const app = buildServer({ spaDir: "/nonexistent", auth: false });
 
 let hostId = "";
@@ -30,6 +39,7 @@ async function makeSchedule(overrides: { osUpdates?: boolean; containerUpdates?:
 
 afterEach(async () => {
   execMock.mockReset();
+  rebootMock.mockReset();
   await prisma.jobStep.deleteMany({
     where: { job: { schedule: { name: { startsWith: "test-job-" } } } },
   });
@@ -189,4 +199,137 @@ test("deleted schedule fails the job without throwing", async () => {
 
   const job = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
   expect(job.status).toBe("failed");
+});
+
+// --- Reboot rolls (M3.2) ---
+
+async function makeRebootHost(alias: string, bootOrder: number, self = false) {
+  return prisma.host.create({
+    data: { alias, hostname: "192.0.2.60", username: "root", bootOrder, self },
+  });
+}
+
+const REBOOT_OK = { ok: true, output: "rebooted", durationMs: 5 };
+
+test("reboot roll runs hosts in bootOrder, each recovering before the next", async () => {
+  const a = await makeRebootHost(`test-jobhost-third-${Date.now()}`, 3);
+  const b = await makeRebootHost(`test-jobhost-first-${Date.now()}`, 1);
+  const c = await makeRebootHost(`test-jobhost-second-${Date.now()}`, 2);
+  const order: string[] = [];
+  rebootMock.mockImplementation(async (host: { alias: string }) => {
+    order.push(host.alias);
+    return REBOOT_OK;
+  });
+
+  const jobId = await enqueueRebootJob([a.id, b.id, c.id], "manual");
+  await drainQueue();
+
+  expect(order).toEqual([b.alias, c.alias, a.alias]); // low bootOrder first
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: jobId },
+    include: { steps: { orderBy: { startedAt: "asc" } } },
+  });
+  expect(job.kind).toBe("reboot");
+  expect(job.status).toBe("succeeded");
+  expect(job.steps.map((s) => s.name)).toEqual(["host.reboot", "host.reboot", "host.reboot"]);
+});
+
+test("failed recovery aborts the roll; remaining hosts are skipped", async () => {
+  const first = await makeRebootHost(`test-jobhost-roll-${Date.now()}`, 1);
+  const stuck = await makeRebootHost(`test-jobhost-stuck-${Date.now()}`, 2);
+  const last = await makeRebootHost(`test-jobhost-last-${Date.now()}`, 3);
+  rebootMock.mockImplementation(async (host: { alias: string }) =>
+    host.id === stuck.id
+      ? { ok: false, output: "did not recover", durationMs: 5, data: { recovered: false } }
+      : REBOOT_OK,
+  );
+
+  const jobId = await enqueueRebootJob([first.id, stuck.id, last.id], "manual");
+  await drainQueue();
+
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: jobId },
+    include: { steps: { orderBy: { startedAt: "asc" } } },
+  });
+  expect(job.status).toBe("failed");
+  // first rebooted fine, stuck failed, last never touched
+  expect(job.steps.map((s) => [s.hostId, s.ok])).toEqual([
+    [first.id, true],
+    [stuck.id, false],
+  ]);
+  expect(rebootMock).toHaveBeenCalledTimes(2);
+});
+
+test("update job with rebootAfterUpdate rolls only pending hosts; self host skipped", async () => {
+  const plain = await makeRebootHost(`test-jobhost-plain-${Date.now()}`, 1);
+  const pending = await makeRebootHost(`test-jobhost-pending-${Date.now()}`, 2);
+  const selfHost = await makeRebootHost(`test-jobhost-self-${Date.now()}`, 3, true);
+  const schedule = await prisma.updateSchedule.create({
+    data: {
+      name: `test-job-${Date.now()}`,
+      daysOfWeek: [1],
+      timeOfDay: "03:00",
+      osUpdates: true,
+      containerUpdates: false,
+      rebootAfterUpdate: true,
+      hosts: { connect: [{ id: plain.id }, { id: pending.id }, { id: selfHost.id }] },
+    },
+  });
+  // apt everywhere; reboot-required only on `pending` and `selfHost`
+  execMock.mockImplementation(async (h, command: string) => {
+    if (command.startsWith("for c in apt-get")) {
+      return { ok: true, output: "/usr/bin/apt-get", exitCode: 0, lines: [] };
+    }
+    if (command.startsWith("if [ -f /var/run/reboot-required")) {
+      const pendingExit = h.alias.includes("plain") ? 1 : 0;
+      return { ok: pendingExit === 0, output: "", exitCode: pendingExit, lines: [] };
+    }
+    return { ok: true, output: "ok", exitCode: 0, lines: [] };
+  });
+  rebootMock.mockResolvedValue(REBOOT_OK);
+
+  await enqueueUpdateJob(schedule.id, "manual");
+  await drainQueue();
+
+  const jobs = await prisma.job.findMany({
+    where: { schedule: { name: schedule.name } },
+    include: { steps: { orderBy: { startedAt: "asc" } }, hosts: true },
+    orderBy: { startedAt: "asc" },
+  });
+  expect(jobs).toHaveLength(2); // update job + reboot roll
+  const roll = jobs[1];
+  expect(roll.kind).toBe("reboot");
+  expect(roll.trigger).toBe("manual");
+  expect(roll.status).toBe("succeeded");
+  expect(roll.hosts.map((h) => h.id)).toEqual([pending.id]); // plain not pending, self skipped
+  expect(roll.steps).toHaveLength(1);
+
+  const skipAudit = await prisma.auditEntry.findFirst({
+    where: { action: "host.reboot", target: selfHost.alias },
+  });
+  expect(skipAudit?.ok).toBe(true);
+  expect(skipAudit?.output).toContain("skipped");
+});
+
+test("manual reboot API enqueues a reboot job", async () => {
+  const host = await makeRebootHost(`test-jobhost-api-${Date.now()}`, 0);
+  rebootMock.mockResolvedValue(REBOOT_OK);
+
+  const res = await app.inject({ method: "POST", url: `/api/hosts/${host.id}/reboot` });
+  expect(res.statusCode).toBe(202);
+  await drainQueue();
+
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: res.json().jobId },
+    include: { steps: true, hosts: true },
+  });
+  expect(job.kind).toBe("reboot");
+  expect(job.trigger).toBe("manual");
+  expect(job.status).toBe("succeeded");
+  expect(job.hosts.map((h) => h.id)).toEqual([host.id]);
+
+  const audited = await prisma.auditEntry.findFirst({
+    where: { action: "host.reboot", target: host.alias, ok: true },
+  });
+  expect(audited).not.toBeNull();
 });

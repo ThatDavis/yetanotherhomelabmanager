@@ -1,6 +1,6 @@
 import type { Host } from "@prisma/client";
 import { execOnHost } from "./executor.js";
-import { runStep, type StepResult } from "./steps.js";
+import { HEALTH_CHECK_CMD, runStep, type StepResult } from "./steps.js";
 
 // Update steps (M3.1). os.update auto-detects the package manager (apt/dnf/yum);
 // container.update rolls Docker Compose projects forward. Neither reboots —
@@ -100,6 +100,49 @@ function parseComposeProjects(output: string): ComposeProject[] | null {
 
 function shellQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+// --- host.reboot (M3.2) ---
+
+const REBOOT_TIMEOUT_MS = 10 * 60 * 1000; // how long to wait for recovery
+const REBOOT_POLL_MS = 5 * 1000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export type RebootData = { recovered: boolean };
+
+// host.reboot — issue a reboot, then poll until SSH + the fixed health probe
+// recover. The send itself may drop the connection mid-handshake (expected
+// when the host goes down fast), so recovery — not the send — decides ok.
+export function hostReboot(
+  host: Host,
+  opts: { timeoutMs?: number; pollMs?: number } = {},
+): Promise<StepResult> {
+  const timeoutMs = opts.timeoutMs ?? REBOOT_TIMEOUT_MS;
+  const pollMs = opts.pollMs ?? REBOOT_POLL_MS;
+  return runStep("host.reboot", host.alias, {}, async () => {
+    const send = await execOnHost(host, "systemctl reboot 2>/dev/null || reboot", 15_000);
+
+    const deadline = Date.now() + timeoutMs;
+    let lastProbe = "";
+    while (Date.now() < deadline) {
+      await sleep(pollMs);
+      const probe = await execOnHost(host, HEALTH_CHECK_CMD, 10_000);
+      lastProbe = probe.output;
+      if (probe.ok) {
+        return {
+          ok: true,
+          output: `reboot issued${send.ok ? "" : ` (send: ${send.output.split("\n").pop()})`}\n${probe.output}`,
+          data: { recovered: true } satisfies RebootData,
+        };
+      }
+    }
+    return {
+      ok: false,
+      output: `reboot issued; host did not recover within ${Math.round(timeoutMs / 60000)}min\nlast probe: ${lastProbe}`,
+      data: { recovered: false } satisfies RebootData,
+    };
+  });
 }
 
 export type ContainerUpdateData = { projects: { name: string; ok: boolean }[] };

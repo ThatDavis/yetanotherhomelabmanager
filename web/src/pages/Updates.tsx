@@ -99,7 +99,11 @@ export function Updates() {
                   {s.hosts.length === 0 && <span className="text-subtext0">—</span>}
                 </td>
                 <td className="py-2 pr-4">
-                  {[s.osUpdates ? "os" : null, s.containerUpdates ? "containers" : null]
+                  {[
+                    s.osUpdates ? "os" : null,
+                    s.containerUpdates ? "containers" : null,
+                    s.rebootAfterUpdate ? "reboot" : null,
+                  ]
                     .filter(Boolean)
                     .join(" + ") || "—"}
                 </td>
@@ -257,6 +261,7 @@ function ScheduleFormDrawer({
   const [timeOfDay, setTimeOfDay] = useState("03:00");
   const [osUpdates, setOsUpdates] = useState(true);
   const [containerUpdates, setContainerUpdates] = useState(false);
+  const [rebootAfterUpdate, setRebootAfterUpdate] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [hostIds, setHostIds] = useState<string[]>([]);
   const [allHosts, setAllHosts] = useState<Host[]>([]);
@@ -269,6 +274,7 @@ function ScheduleFormDrawer({
       setTimeOfDay(schedule?.timeOfDay ?? "03:00");
       setOsUpdates(schedule?.osUpdates ?? true);
       setContainerUpdates(schedule?.containerUpdates ?? false);
+      setRebootAfterUpdate(schedule?.rebootAfterUpdate ?? false);
       setEnabled(schedule?.enabled ?? true);
       setHostIds(schedule?.hosts.map((h) => h.id) ?? []);
       setError(null);
@@ -291,6 +297,7 @@ function ScheduleFormDrawer({
         timeOfDay,
         osUpdates,
         containerUpdates,
+        rebootAfterUpdate,
         enabled,
         hostIds,
       };
@@ -373,6 +380,17 @@ function ScheduleFormDrawer({
             />
             <span className="font-mono text-xs text-subtext1">
               CONTAINER UPDATES (docker compose projects)
+            </span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={rebootAfterUpdate}
+              onChange={(e) => setRebootAfterUpdate(e.target.checked)}
+              className="accent-[var(--color-accent)]"
+            />
+            <span className="font-mono text-xs text-subtext1">
+              REBOOT IF PENDING (rolling, boot order; self host skipped)
             </span>
           </label>
           <label className="flex items-center gap-2">

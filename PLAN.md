@@ -31,7 +31,7 @@
 ### Milestone 3: Updates
 **Status:** In Progress (started 2026-10-01)
 - [x] **M3.1: Update scheduling** (Issue #20, branch `feature/20-update-scheduling`, PR #21) — weekly schedules, os.update (apt/dnf) + container.update (compose), job engine with SSE live status, run-now with pre-flight; see docs/SPEC.md §Milestone 3
-- [ ] Reboot orchestration
+- [x] **M3.2: Reboot orchestration** (Issue #22, branch `feature/22-reboot-orchestration`, PR #23) — rolling reboots in bootOrder with recovery gate, schedule toggle + manual per-host reboot, self-host guards; see docs/SPEC.md §Milestone 3
 - [ ] Post-update verification (health checks before/after)
 - [ ] Email reports after jobs complete (external SMTP relay)
 
@@ -54,10 +54,11 @@
 
 ## Active Feature
 
-*None. Run `/dev:start-feature` to begin — next up: M3.2 reboot orchestration.*
+*None. Run `/dev:start-feature` to begin — next up: M3.3 post-update verification.*
 
 ## Completed Features
 
+- **Reboot orchestration (M3.2)** (Milestone 3, 2026-10-04) — rolling reboots in bootOrder with recovery gate, host.reboot step, schedule toggle + typed-confirm manual reboot, self-host guards, live running-step rows (issue #22, PR #23)
 - **Update scheduling (M3.1)** (Milestone 3, 2026-10-01) — weekly schedules, job engine with SSE live status + toasts, os.update (apt/dnf, reboot-pending) + container.update (compose-only), pre-flight run-now, Host.self flag (issue #20, PR #21)
 - **App shell** (Milestone 1, 2026-09-29) — Catppuccin Mocha themed sidebar shell, react-router, dashboard, production SPA serving
 - **Guest host registration + SSH executor** (Milestone 1, 2026-09-30) — master keypair + bootstrap, step contract with mandatory audit, health.check probe, Guests UI (issue #2)

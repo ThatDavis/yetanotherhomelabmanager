@@ -15,12 +15,14 @@ model Host {
   port      Int      @default(22)
   username  String
   notes     String   @default("")
-  self      Boolean  @default(false) // true if this host runs the app (reboot deferred, M3.2)
+  self      Boolean  @default(false) // true if this host runs the app (reboot refused, M3.2)
+  bootOrder Int      @default(0) // reboot rolls go low→high (dependency ordering)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   schedules UpdateSchedule[]
   jobSteps  JobStep[]
+  jobs      Job[]
 }
 
 // Append-only audit trail. One row per step execution or mutating API action.
@@ -163,6 +165,7 @@ model UpdateSchedule {
   timeOfDay        String // "HH:MM", server-local time
   osUpdates        Boolean  @default(true)
   containerUpdates Boolean  @default(false)
+  rebootAfterUpdate Boolean @default(false) // reboot hosts flagged reboot-pending when the update job ends
   enabled          Boolean  @default(true)
   lastRunAt        DateTime?
   createdAt        DateTime @default(now())
@@ -177,7 +180,8 @@ model UpdateSchedule {
 // not stop the job.
 model Job {
   id         String    @id @default(cuid())
-  trigger    String // scheduled | manual
+  trigger    String // scheduled | manual | auto (auto = reboot roll after an update job)
+  kind       String    @default("update") // update | reboot
   status     String    @default("running") // running | succeeded | failed
   scheduleId String?
   schedule   UpdateSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
@@ -185,6 +189,7 @@ model Job {
   finishedAt DateTime?
 
   steps JobStep[]
+  hosts Host[] // explicit scope for reboot jobs; update jobs use schedule.hosts
 }
 
 // One step within a job, tied to the host it ran on. Output is the combined
@@ -196,10 +201,11 @@ model JobStep {
   hostId        String?
   host          Host?    @relation(fields: [hostId], references: [id], onDelete: SetNull)
   name          String // dotted step name, e.g. os.update
-  ok            Boolean
+  ok            Boolean  @default(false) // placeholder until the step finishes
   output        String   @default("")
   rebootPending Boolean  @default(false)
   startedAt     DateTime @default(now())
+  finishedAt    DateTime? // null while the step is running
   durationMs    Int      @default(0)
 
   @@index([jobId])
