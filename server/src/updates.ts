@@ -1,5 +1,6 @@
-import type { Host } from "@prisma/client";
+import type { Host, HostService } from "@prisma/client";
 import { execOnHost } from "./executor.js";
+import { probeServicePort } from "./serviceprobe.js";
 import { HEALTH_CHECK_CMD, runStep, type StepResult } from "./steps.js";
 
 // Update steps (M3.1). os.update auto-detects the package manager (apt/dnf/yum);
@@ -100,6 +101,39 @@ function parseComposeProjects(output: string): ComposeProject[] | null {
 
 function shellQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+// --- host.verify (M3.3) ---
+
+export type VerifyData = {
+  healthOk: boolean;
+  services: { name: string; port: number; ok: boolean }[];
+};
+
+// host.verify — the SSH health probe plus a TCP connect from the app to each
+// operator-declared service port. Runs before and after updates; the runner
+// skips a host with a failed pre-check and keeps failed post-checks out of
+// the reboot roll.
+export function hostVerify(host: Host & { services: HostService[] }): Promise<StepResult> {
+  return runStep(
+    "host.verify",
+    host.alias,
+    { services: host.services.map((s) => s.name) },
+    async () => {
+      const health = await execOnHost(host, HEALTH_CHECK_CMD);
+      const lines: string[] = [
+        health.ok ? "ssh health: ok" : `ssh health: FAILED\n${health.output}`,
+      ];
+      const services: VerifyData["services"] = [];
+      for (const svc of host.services) {
+        const ok = await probeServicePort(host.hostname, svc.port);
+        services.push({ name: svc.name, port: svc.port, ok });
+        lines.push(`service ${svc.name}:${svc.port} ${ok ? "ok" : "UNREACHABLE"}`);
+      }
+      const ok = health.ok && services.every((s) => s.ok);
+      return { ok, output: lines.join("\n"), data: { healthOk: health.ok, services } };
+    },
+  );
 }
 
 // --- host.reboot (M3.2) ---
