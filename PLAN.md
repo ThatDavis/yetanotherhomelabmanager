@@ -32,7 +32,7 @@
 **Status:** In Progress (started 2026-10-01)
 - [x] **M3.1: Update scheduling** (Issue #20, branch `feature/20-update-scheduling`, PR #21) — weekly schedules, os.update (apt/dnf) + container.update (compose), job engine with SSE live status, run-now with pre-flight; see docs/SPEC.md §Milestone 3
 - [x] **M3.2: Reboot orchestration** (Issue #22, branch `feature/22-reboot-orchestration`, PR #23) — rolling reboots in bootOrder with recovery gate, schedule toggle + manual per-host reboot, self-host guards; see docs/SPEC.md §Milestone 3
-- [ ] Post-update verification (health checks before/after)
+- [ ] **M3.3: Post-update verification** (Issue #24, branch `feature/24-post-update-verification`) — host.verify before/after updates, per-host service TCP checks, pre-check skip + post-check reboot gate; see docs/SPEC.md §Milestone 3
 - [ ] Email reports after jobs complete (external SMTP relay)
 
 ### Milestone 4: Backups
@@ -54,7 +54,7 @@
 
 ## Active Feature
 
-*None. Run `/dev:start-feature` to begin — next up: M3.3 post-update verification.*
+**M3.3: Post-update verification** — Issue #24, branch `feature/24-post-update-verification`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 
 ## Completed Features
 
