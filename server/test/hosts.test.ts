@@ -74,6 +74,53 @@ test("reboot on missing host returns 404", async () => {
   expect(res.statusCode).toBe(404);
 });
 
+test("host PATCH wholesale-replaces declared services", async () => {
+  const created = await app.inject({
+    method: "POST",
+    url: "/api/hosts",
+    payload: { ...host, alias: "test-svc-host" },
+  });
+  const id = created.json().id;
+
+  const set = await app.inject({
+    method: "PATCH",
+    url: `/api/hosts/${id}`,
+    payload: {
+      services: [
+        { name: "web", port: 8080 },
+        { name: "db", port: 5432 },
+      ],
+    },
+  });
+  expect(set.statusCode).toBe(200);
+
+  const list = await app.inject({ method: "GET", url: "/api/hosts" });
+  const found = list.json().find((h: { id: string }) => h.id === id);
+  expect(found.services.map((s: { name: string; port: number }) => [s.name, s.port])).toEqual([
+    ["db", 5432],
+    ["web", 8080],
+  ]);
+
+  // Replace again: previous entries are gone, not merged.
+  await app.inject({
+    method: "PATCH",
+    url: `/api/hosts/${id}`,
+    payload: { services: [{ name: "ssh", port: 22 }] },
+  });
+  const after = await app.inject({ method: "GET", url: "/api/hosts" });
+  const found2 = after.json().find((h: { id: string }) => h.id === id);
+  expect(found2.services.map((s: { name: string }) => s.name)).toEqual(["ssh"]);
+
+  const bad = await app.inject({
+    method: "PATCH",
+    url: `/api/hosts/${id}`,
+    payload: { services: [{ name: "x", port: 70000 }] },
+  });
+  expect(bad.statusCode).toBe(400);
+
+  await prisma.host.delete({ where: { id } });
+});
+
 test("reboot of the self host is refused and audited", async () => {
   const created = await app.inject({
     method: "POST",

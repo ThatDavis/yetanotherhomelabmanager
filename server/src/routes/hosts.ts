@@ -19,14 +19,26 @@ const createHostSchema = z.object({
   self: z.boolean().default(false),
 });
 
+const serviceSchema = z.object({
+  name: z.string().min(1).max(50),
+  port: z.number().int().min(1).max(65535),
+});
+
 const updateHostSchema = z.object({
   notes: z.string().max(500).optional(),
   self: z.boolean().optional(),
   bootOrder: z.number().int().min(0).max(999).optional(),
+  // Wholesale replace of the host's declared services (M3.3).
+  services: z.array(serviceSchema).max(20).optional(),
 });
 
 export function hostRoutes(app: FastifyInstance) {
-  app.get("/api/hosts", async () => prisma.host.findMany({ orderBy: { alias: "asc" } }));
+  app.get("/api/hosts", async () =>
+    prisma.host.findMany({
+      include: { services: { orderBy: { name: "asc" } } },
+      orderBy: { alias: "asc" },
+    }),
+  );
 
   app.post("/api/hosts", async (req, reply) => {
     const parsed = createHostSchema.safeParse(req.body);
@@ -69,7 +81,16 @@ export function hostRoutes(app: FastifyInstance) {
     if (parsed.data.notes !== undefined) fields.notes = parsed.data.notes;
     if (parsed.data.self !== undefined) fields.self = parsed.data.self;
     if (parsed.data.bootOrder !== undefined) fields.bootOrder = parsed.data.bootOrder;
-    const host = await prisma.host.update({ where: { id }, data: fields });
+    const host = await prisma.$transaction(async (tx) => {
+      const updated = await tx.host.update({ where: { id }, data: fields });
+      if (parsed.data.services !== undefined) {
+        await tx.hostService.deleteMany({ where: { hostId: id } });
+        await tx.hostService.createMany({
+          data: parsed.data.services.map((s) => ({ hostId: id, name: s.name, port: s.port })),
+        });
+      }
+      return updated;
+    });
     await audit({
       action: "host.update",
       target: host.alias,
