@@ -105,13 +105,13 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 #### Feature: Post-update verification (M3.3)
 **Description:** Update jobs verify each scoped host before and after updating: a `host.verify` step runs the fixed SSH health probe plus operator-declared service checks (TCP connect from the app to each declared port, so no distro-specific tooling is needed on hosts). A host failing the pre-check is skipped for updates; a host failing the post-check is excluded from the reboot roll and marks the job failed. Verification is a per-schedule toggle, default on.
 **Acceptance Criteria:**
-- [ ] Update schedules have a verify toggle (default on); update jobs run `host.verify` before and after updates on each scoped host
-- [ ] Operators declare per-host services (name + port); `host.verify` TCP-connects each from the app and reports results per service
-- [ ] Pre-check failure skips that host's updates (audited); other hosts continue
-- [ ] Post-check failure excludes the host from the reboot roll and marks the job failed
-- [ ] Services editable in the Guests host EDIT drawer (wholesale replace via hosts PATCH)
-- [ ] Every verification is audited via the step contract; results visible as job steps
-- [ ] Tests green (verify step via mocked executor/socket, pre-check skip, post-check reboot gate)
+- [x] Update schedules have a verify toggle (default on); update jobs run `host.verify` before and after updates on each scoped host
+- [x] Operators declare per-host services (name + port); `host.verify` TCP-connects each from the app and reports results per service
+- [x] Pre-check failure skips that host's updates (audited); other hosts continue
+- [x] Post-check failure excludes the host from the reboot roll and marks the job failed
+- [x] Services editable in the Guests host EDIT drawer (wholesale replace via hosts PATCH)
+- [x] Every verification is audited via the step contract; results visible as job steps
+- [x] Tests green (verify step via mocked executor/socket, pre-check skip, post-check reboot gate)
 
 ---
 

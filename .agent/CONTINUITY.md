@@ -148,11 +148,12 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ Built: Host.bootOrder + UpdateSchedule.rebootAfterUpdate + Job.kind/_HostToJob (+JobStep.finishedAt/ok default for running rows); host.reboot step (send + 10-min recovery poll via health.check); rolling rolls low→high bootOrder with abort-on-non-recovery; self host auto-skip (audited) + manual refusal (409); Guests EDIT drawer (notes/self/bootOrder) + typed-confirm REBOOT modal; browser-verified incl. live running-step rows (server 83/83, web 12/12) |
 | 2026-10-04 | Completed feature: Reboot orchestration (M3.2, PR #23). DoD all PASS (1 WARN: no web component tests, matches convention); browser-verified; real recovery cycle pending on homelab. Note: dev DB is podman container yahlm-pg — start it before tests. |
 | 2026-10-04 | Started feature: Post-update verification (M3.3, Issue #24) on branch feature/24-post-update-verification. Deep-plan validated: verifyUpdates default ON, app-side TCP service probes, pre-check skip + post-check reboot gate. |
-|  |    — Schema: UpdateSchedule.verifyUpdates (default true), HostService model, migration |
-|  |    — host.verify step (SSH health.check + TCP service probes from app), mocked tests |
-|  |    — jobs.ts wiring: pre-check skip, post-check reboot gate + job failure |
-|  |    — API: schedule toggle, hosts GET services, PATCH wholesale replace |
-|  |    — UI: verify toggle, services editor in Guests EDIT drawer |
+|  |    ✓ Schema: UpdateSchedule.verifyUpdates (default true), HostService model, migration |
+|  |    ✓ host.verify step (SSH health.check + TCP service probes from app), mocked tests |
+|  |    ✓ jobs.ts wiring: pre-check skip, post-check reboot gate + job failure |
+|  |    ✓ API: schedule toggle, hosts GET services, PATCH wholesale replace |
+|  |    ✓ UI: verify toggle, services editor in Guests EDIT drawer |
+|  |    ✓ Built: UpdateSchedule.verifyUpdates (default ON) + HostService model + JobStep.phase; serviceprobe.ts (app-side TCP, Promise.withResolvers); host.verify step; pre-check skip (audited host.update.skip, job stays ok) + post-check gate (fails job, excludes host from roll); hosts PATCH wholesale service replace; Guests services editor + Jobs phase badges; browser-verified live pre-check skip (server 91/91, web 12/12) |
 
 ## [DISCOVERIES]
 
