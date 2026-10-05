@@ -24,7 +24,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 ### Milestone 3: Updates (In Progress)
 Goal: Scheduled updates with reboot orchestration, post-update verification, email reports.
 - [x] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
-- [ ] M3.2: Reboot orchestration (Issue #22, branch feature/22-reboot-orchestration)
+- [x] M3.2: Reboot orchestration (Issue #22, branch feature/22-reboot-orchestration)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -144,6 +144,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ API: schedule toggle, POST /api/hosts/:id/reboot (self refused), hosts PATCH bootOrder |
 |  |    ✓ UI: schedule toggle, Guests bootOrder + REBOOT typed-confirm, job center reboot steps |
 |  |    ✓ Built: Host.bootOrder + UpdateSchedule.rebootAfterUpdate + Job.kind/_HostToJob (+JobStep.finishedAt/ok default for running rows); host.reboot step (send + 10-min recovery poll via health.check); rolling rolls low→high bootOrder with abort-on-non-recovery; self host auto-skip (audited) + manual refusal (409); Guests EDIT drawer (notes/self/bootOrder) + typed-confirm REBOOT modal; browser-verified incl. live running-step rows (server 83/83, web 12/12) |
+| 2026-10-04 | Completed feature: Reboot orchestration (M3.2, PR #23). DoD all PASS (1 WARN: no web component tests, matches convention); browser-verified; real recovery cycle pending on homelab. Note: dev DB is podman container yahlm-pg — start it before tests. |
 
 ## [DISCOVERIES]
 
@@ -188,6 +189,11 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ### Live dashboard + Uptime tab (M2.2, 2026-10-01)
 - Dashboard went live: summary cards, node liveness (scheduler-driven node tests), recent activity, target strips; config split into the Uptime tab (uptime %, detail modal with SVG latency graph); sidebar chip now real worst-status. Immediately surfaced a real signal (defiant DOWN).
+
+### Reboot orchestration (M3.2, 2026-10-04)
+- Rolling reboots ride the M3.1 job engine: `host.reboot` step (send + 10-min recovery poll via health.check), rolls ordered by Host.bootOrder with a recovery gate between hosts, abort-on-non-recovery (rebooted hosts never re-touched). Triggers: schedule-level rebootAfterUpdate toggle (auto roll of pending hosts, trigger "auto") + manual per-host reboot (typed-confirm, trigger "manual"). Self host: audited auto-skip + API refusal (409) — rebooting the app's own host would kill the orchestrator.
+- JobStep rows now persist from step start (finishedAt null = running) so in-progress steps (e.g. the 10-min reboot poll) are visible live in the job center — two small migrations (finishedAt, ok default).
+- Browser-verified: Guests BOOT/[SELF]/REBOOT/EDIT surfaces, self-refusal, typed-confirm → live running step (PR #23).
 
 ### Update scheduling (M3.1, 2026-10-01)
 - Weekly update schedules (day(s)+time, host scope, separate OS/container toggles) firing as persistent background jobs via a serial in-process runner (Job/JobStep DB rows); per-host failure isolation; per-job + global SSE; job center UI with live status, pre-flight summary before manual runs, completion toasts.
