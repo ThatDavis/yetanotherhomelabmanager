@@ -213,6 +213,9 @@ function JobDetailModal({
                   )}
                   <span className="text-text">{s.host?.alias ?? "?"}</span>
                   <span className="text-subtext0">{s.name}</span>
+                  {s.phase !== "" && (
+                    <span className="text-lavender">[{s.phase.toUpperCase()}]</span>
+                  )}
                   <span className="text-subtext0">
                     {s.finishedAt === null
                       ? "running…"
