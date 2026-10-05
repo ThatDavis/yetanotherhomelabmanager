@@ -4,7 +4,13 @@ import { afterEach, expect, test, vi } from "vitest";
 import { prisma } from "../src/db.js";
 import { execOnHost } from "../src/executor.js";
 import { probeServicePort } from "../src/serviceprobe.js";
-import { containerUpdate, hostReboot, hostVerify, osUpdate, type VerifyData } from "../src/updates.js";
+import {
+  containerUpdate,
+  hostReboot,
+  hostVerify,
+  osUpdate,
+  type VerifyData,
+} from "../src/updates.js";
 
 vi.mock("../src/executor.js", () => ({
   execOnHost: vi.fn(),
