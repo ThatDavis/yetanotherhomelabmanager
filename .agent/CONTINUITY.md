@@ -26,6 +26,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 - [x] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
 - [x] M3.2: Reboot orchestration (Issue #22, branch feature/22-reboot-orchestration)
 - [ ] M3.3: Post-update verification (Issue #24, branch feature/24-post-update-verification)
+- [ ] M3.5: Proxmox SSH host onboarding (Issue #25, branch feature/25-proxmox-host-onboarding, stacked on #24)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -154,6 +155,10 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ API: schedule toggle, hosts GET services, PATCH wholesale replace |
 |  |    ✓ UI: verify toggle, services editor in Guests EDIT drawer |
 |  |    ✓ Built: UpdateSchedule.verifyUpdates (default ON) + HostService model + JobStep.phase; serviceprobe.ts (app-side TCP, Promise.withResolvers); host.verify step; pre-check skip (audited host.update.skip, job stays ok) + post-check gate (fails job, excludes host from roll); hosts PATCH wholesale service replace; Guests services editor + Jobs phase badges; browser-verified live pre-check skip (server 91/91, web 12/12) |
+| 2026-10-05 | Started feature: Proxmox SSH host onboarding (Issue #25) on branch feature/25-proxmox-host-onboarding (stacked on #24). Operator ask: automate PVE host setup — URL already holds the hostname; bootstrap stays manual (Proxmox has no exec API). |
+|  |    ✓ POST /api/nodes/:id/register-host (hostname from node URL, idempotent, audited) + guest.agent-ips step (qemu agent network-get-interfaces; loopback/link-local skipped; LXC untouched) |
+|  |    ✓ Nodes page HOST action (register + inline bootstrap script) + AGENT IPS drawer (per-VM REGISTER buttons) |
+|  |    ✓ Tests against real-TLS mock PVE (server 95/95, web 12/12); stack restarted at :3000 for test drive |
 
 ## [DISCOVERIES]
 
