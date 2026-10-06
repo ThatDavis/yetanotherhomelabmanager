@@ -164,10 +164,11 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 | 2026-10-06 | Completed feature: Post-update verification (M3.3, PR #26, CI green). Merged after #23. |
 | 2026-10-06 | Completed feature: Proxmox SSH host onboarding (M3.5, PR #27, CI green). Retargeted to main after #26 merged; merged same session. |
 | 2026-10-06 | Started feature: Compose stack inventory + selective updates (M3.6, Issue #28) on branch feature/28-compose-stack-inventory. 4-round operator interview = deep-plan; design in docs/SPEC.md §M3.6. |
-|  |    — Schema: ComposeStack model + Host OS-check cache fields, migration |
-|  |    — stacks.scan + os.check steps, nightly scheduler, check-now endpoint, mocked tests |
-|  |    — Update-available: on-host digest checks + Hub/GHCR tag lists with cache |
-|  |    — UI: Infra rename + stacks panel + dashboard strip/hosts card + stack-scoped container.update |
+|  |    ✓ Schema: ComposeStack model + Host OS-check cache fields, migration |
+|  |    ✓ stacks.scan + os.check steps, nightly scheduler, check-now endpoint, mocked tests |
+|  |    ✓ Update-available: on-host digest checks + Hub/GHCR tag lists with cache |
+|  |    ✓ UI: Infra rename + stacks panel + dashboard strip/hosts card + stack-scoped container.update |
+|  |    ✓ Built: ComposeStack + Job.project + UpdateSchedule.containerProjects; stacks.ts (scan w/ drift via config-hash, os.check, on-host buildx digest compare, Hub/GHCR tag lists 6h cache, degrade-to-null); nightly 03:xx scheduler; stack jobs (kind=stack); /api/stacks + per-stack update + /api/hosts/:id/scan; Infra page (stacks panel, CHECK NOW), dashboard cards, schedule stack picker; live-verified against REAL homelab host (13 stacks, real update-available + latest versions) — server 107/107, web 12/12; fixed test-isolation leak (nightly scan wrote fixture rows to operator hosts; mock now refuses non-test hosts) |
 
 ## [DISCOVERIES]
 
