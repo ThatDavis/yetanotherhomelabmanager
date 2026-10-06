@@ -25,8 +25,8 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 Goal: Scheduled updates with reboot orchestration, post-update verification, email reports.
 - [x] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
 - [x] M3.2: Reboot orchestration (Issue #22, branch feature/22-reboot-orchestration)
-- [ ] M3.3: Post-update verification (Issue #24, branch feature/24-post-update-verification)
-- [ ] M3.5: Proxmox SSH host onboarding (Issue #25, branch feature/25-proxmox-host-onboarding, stacked on #24)
+- [x] M3.3: Post-update verification (Issue #24, branch feature/24-post-update-verification)
+- [x] M3.5: Proxmox SSH host onboarding (Issue #25, branch feature/25-proxmox-host-onboarding, stacked on #24)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -159,6 +159,8 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ POST /api/nodes/:id/register-host (hostname from node URL, idempotent, audited) + guest.agent-ips step (qemu agent network-get-interfaces; loopback/link-local skipped; LXC untouched) |
 |  |    ✓ Nodes page HOST action (register + inline bootstrap script) + AGENT IPS drawer (per-VM REGISTER buttons) |
 |  |    ✓ Tests against real-TLS mock PVE (server 95/95, web 12/12); stack restarted at :3000 for test drive |
+| 2026-10-06 | Completed feature: Post-update verification (M3.3, PR #26, CI green). Merged after #23. |
+| 2026-10-06 | Completed feature: Proxmox SSH host onboarding (M3.5, PR #27, CI green). Retargeted to main after #26 merged; merged same session. |
 
 ## [DISCOVERIES]
 
@@ -203,6 +205,12 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ### Live dashboard + Uptime tab (M2.2, 2026-10-01)
 - Dashboard went live: summary cards, node liveness (scheduler-driven node tests), recent activity, target strips; config split into the Uptime tab (uptime %, detail modal with SVG latency graph); sidebar chip now real worst-status. Immediately surfaced a real signal (defiant DOWN).
+
+### Proxmox SSH host onboarding (M3.5, 2026-10-06)
+- One-click SSH host creation from a Node row (hostname parsed from the node URL, idempotent, audited `node.host-register`; bootstrap script shown inline — Proxmox has no exec API). QEMU guest-agent IP discovery (`guest.agent-ips` step; loopback/link-local skipped, LXC untouched) with per-VM REGISTER on the Nodes page. Real-TLS mock PVE tested (PR #27).
+
+### Post-update verification (M3.3, 2026-10-06)
+- `host.verify` step (SSH health + app-side TCP probes) runs pre/post per host on update jobs (schedule toggle `verifyUpdates`, default ON). Pre-check failure skips the host (audited, job stays green); post-check failure fails the job and gates the M3.2 reboot roll. Docker-published ports auto-discovered via `docker inspect` with compose `project/service` attribution, merged with declared HostService rows (PR #26).
 
 ### Reboot orchestration (M3.2, 2026-10-04)
 - Rolling reboots ride the M3.1 job engine: `host.reboot` step (send + 10-min recovery poll via health.check), rolls ordered by Host.bootOrder with a recovery gate between hosts, abort-on-non-recovery (rebooted hosts never re-touched). Triggers: schedule-level rebootAfterUpdate toggle (auto roll of pending hosts, trigger "auto") + manual per-host reboot (typed-confirm, trigger "manual"). Self host: audited auto-skip + API refusal (409) — rebooting the app's own host would kill the orchestrator.

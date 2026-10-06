@@ -33,7 +33,8 @@
 - [x] **M3.1: Update scheduling** (Issue #20, branch `feature/20-update-scheduling`, PR #21) — weekly schedules, os.update (apt/dnf) + container.update (compose), job engine with SSE live status, run-now with pre-flight; see docs/SPEC.md §Milestone 3
 - [x] **M3.2: Reboot orchestration** (Issue #22, branch `feature/22-reboot-orchestration`, PR #23) — rolling reboots in bootOrder with recovery gate, schedule toggle + manual per-host reboot, self-host guards; see docs/SPEC.md §Milestone 3
 - [ ] **Updates + service discovery refinements** — operator review follow-up (scope TBD: tweaks to update scheduling and docker service discovery, pending operator input)
-- [ ] **M3.3: Post-update verification** (Issue #24, branch `feature/24-post-update-verification`) — host.verify before/after updates, per-host service TCP checks, pre-check skip + post-check reboot gate; see docs/SPEC.md §Milestone 3
+- [x] **M3.3: Post-update verification** (Issue #24, branch `feature/24-post-update-verification`, PR #26) — host.verify before/after updates, app-side service TCP checks + docker-published port discovery with compose attribution, pre-check skip + post-check reboot gate; see docs/SPEC.md §Milestone 3
+- [x] **M3.5: Proxmox SSH host onboarding** (Issue #25, branch `feature/25-proxmox-host-onboarding`, PR #27) — one-click host creation from node URL + qemu agent IP discovery with per-VM register; bootstrap stays a one-time manual run
 - [ ] Email reports after jobs complete (external SMTP relay)
 
 ### Milestone 4: Backups
@@ -55,10 +56,12 @@
 
 ## Active Feature
 
-**M3.3: Post-update verification** — Issue #24, branch `feature/24-post-update-verification`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
+*None. Run `/dev:start-feature` to begin — remaining in M3: email reports (M3.4) + the operator's updates/service-discovery refinements.*
 
 ## Completed Features
 
+- **Proxmox SSH host onboarding (M3.5)** (Milestone 3, 2026-10-06) — one-click host from node URL + qemu agent IP discovery with per-VM register (issue #25, PR #27)
+- **Post-update verification (M3.3)** (Milestone 3, 2026-10-06) — host.verify pre/post with service TCP checks + docker port discovery, pre-check skip, post-check reboot gate (issue #24, PR #26)
 - **Reboot orchestration (M3.2)** (Milestone 3, 2026-10-04) — rolling reboots in bootOrder with recovery gate, host.reboot step, schedule toggle + typed-confirm manual reboot, self-host guards, live running-step rows (issue #22, PR #23)
 - **Update scheduling (M3.1)** (Milestone 3, 2026-10-01) — weekly schedules, job engine with SSE live status + toasts, os.update (apt/dnf, reboot-pending) + container.update (compose-only), pre-flight run-now, Host.self flag (issue #20, PR #21)
 - **App shell** (Milestone 1, 2026-09-29) — Catppuccin Mocha themed sidebar shell, react-router, dashboard, production SPA serving
