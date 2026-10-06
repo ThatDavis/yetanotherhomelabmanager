@@ -20,8 +20,7 @@ const PLANNED_STEPS: {
   {
     name: "container.update",
     toggle: "containerUpdates",
-    fn: (host, schedule) =>
-      containerUpdate(host, { projects: parseContainerProjects(schedule) }),
+    fn: (host, schedule) => containerUpdate(host, { projects: parseContainerProjects(schedule) }),
   },
 ];
 

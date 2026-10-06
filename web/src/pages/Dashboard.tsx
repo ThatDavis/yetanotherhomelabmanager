@@ -68,6 +68,28 @@ export function Dashboard() {
         />
       </div>
 
+      <div className="mt-4 grid grid-cols-2 gap-4">
+        <Link to="/guests">
+          <SummaryCard
+            label="SERVICES (COMPOSE)"
+            value={s ? `${s.stacksTotal}` : "—"}
+            detail={
+              s
+                ? `${s.stacksUpdatable} update(s) available` +
+                  (s.stacksDrift > 0 ? ` · ${s.stacksDrift} drift` : "")
+                : "nightly scan"
+            }
+          />
+        </Link>
+        <Link to="/guests">
+          <SummaryCard
+            label="HOSTS NEEDING UPDATES"
+            value={s ? `${s.hostsNeedingUpdates}` : "—"}
+            detail={data ? "tap to inspect on Infra" : "nightly os.check"}
+          />
+        </Link>
+      </div>
+
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Panel label="NODE LIVENESS">
           {!data || data.nodes.length === 0 ? (

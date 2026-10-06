@@ -104,10 +104,14 @@ async function makeHost(alias: string) {
 
 function mockScan(opts: { hash?: string | null; remoteDigest?: string } = {}) {
   const handler = scanHandler(opts);
-  execMock.mockImplementation(async (_h, command: string) => ({
-    ...handler(command),
-    lines: [],
-  }));
+  execMock.mockImplementation(async (host, command: string) => {
+    // runNightlyScans scans every host in the DB — never touch real operator
+    // hosts with fixture data; pretend they have no docker.
+    if (!(host.alias ?? "").startsWith(PREFIX)) {
+      return { ok: false, output: "", exitCode: 1, lines: [] };
+    }
+    return { ...handler(command), lines: [] };
+  });
 }
 
 function jsonResponse(body: unknown, ok = true): Response {

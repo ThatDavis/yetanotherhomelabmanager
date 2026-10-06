@@ -10,7 +10,7 @@ function renderAt(url: string) {
 
 test("sidebar renders all sections on every page", () => {
   const html = renderAt("/");
-  for (const section of ["Dashboard", "Uptime", "Nodes", "Guests", "Jobs", "Audit", "Settings"]) {
+  for (const section of ["Dashboard", "Uptime", "Nodes", "Infra", "Jobs", "Audit", "Settings"]) {
     expect(html).toContain(section);
   }
 });

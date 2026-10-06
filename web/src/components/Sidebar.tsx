@@ -9,7 +9,7 @@ const SECTIONS = [
   { to: "/uptime", label: "Uptime", glyph: "▲" },
   { to: "/alerts", label: "Alerts", glyph: "⚠" },
   { to: "/nodes", label: "Nodes", glyph: "▦" },
-  { to: "/guests", label: "Guests", glyph: "▤" },
+  { to: "/guests", label: "Infra", glyph: "▤" },
   { to: "/updates", label: "Updates", glyph: "↻" },
   { to: "/jobs", label: "Jobs", glyph: "▶" },
   { to: "/audit", label: "Audit", glyph: "≡" },

@@ -29,7 +29,7 @@ export function dashboardRoutes(app: FastifyInstance) {
     }
 
     // M3.6 services strip: cached scan data, never blocks on SSH.
-    let stacksTotal = stacks.length;
+    const stacksTotal = stacks.length;
     let stacksUpdatable = 0;
     let stacksDrift = 0;
     for (const s of stacks) {

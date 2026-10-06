@@ -8,6 +8,8 @@ export type Host = {
   self: boolean;
   bootOrder: number;
   services: { id: string; name: string; port: number }[];
+  osUpdatesPending: number; // -1 unknown (M3.6)
+  osCheckedAt: string | null;
   createdAt: string;
 };
 
@@ -47,6 +49,27 @@ export type SyncResult = {
 export type HostRegisterResult = { host: Host; existing: boolean };
 
 export type AgentIpsData = { guests: { vmid: number; name: string; addresses: string[] }[] };
+
+export type StackService = {
+  name: string;
+  image: string;
+  tag: string;
+  digest: string;
+  version: string;
+  state: string;
+  updatable: boolean | null;
+  latest: string | null;
+};
+
+export type ComposeStack = {
+  id: string;
+  project: string;
+  configFiles: string;
+  services: StackService[];
+  drift: boolean;
+  scannedAt: string;
+  host: { id: string; alias: string };
+};
 
 export type AuditEntry = {
   id: string;
@@ -101,6 +124,7 @@ export type UpdateSchedule = {
   timeOfDay: string; // "HH:MM"
   osUpdates: boolean;
   containerUpdates: boolean;
+  containerProjects: string[]; // [] = all compose projects on scoped hosts
   rebootAfterUpdate: boolean;
   verifyUpdates: boolean;
   enabled: boolean;
@@ -125,7 +149,8 @@ export type JobStep = {
 export type Job = {
   id: string;
   trigger: "scheduled" | "manual" | "auto";
-  kind: "update" | "reboot";
+  kind: "update" | "reboot" | "stack";
+  project: string; // stack jobs: the compose project
   status: "running" | "succeeded" | "failed";
   startedAt: string;
   finishedAt: string | null;
@@ -144,7 +169,13 @@ export type DashboardData = {
     targetsTotal: number;
     nodesUp: number;
     nodesTotal: number;
+    stacksTotal: number;
+    stacksUpdatable: number;
+    stacksDrift: number;
+    hostsNeedingUpdates: number;
   };
+  hosts: { id: string; alias: string; osUpdatesPending: number; osCheckedAt: string | null }[];
+  stacks: { total: number; updatable: number; drift: number };
 };
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {

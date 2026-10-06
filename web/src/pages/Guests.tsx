@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { api, type Host, type ProbeResult } from "../api";
+import { api, type ComposeStack, type Host, type ProbeResult } from "../api";
 import { Drawer } from "../components/Drawer";
 import { GuestInventory } from "../components/GuestInventory";
 import { Modal } from "../components/Modal";
@@ -21,6 +21,9 @@ const inputCls =
 
 export function Guests() {
   const [hosts, setHosts] = useState<Host[]>([]);
+  const [stacks, setStacks] = useState<ComposeStack[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [scanning, setScanning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [drawer, setDrawer] = useState<DrawerState>(null);
 
@@ -28,6 +31,9 @@ export function Guests() {
     api<Host[]>("/hosts")
       .then(setHosts)
       .catch((err: Error) => setError(err.message));
+    api<ComposeStack[]>("/stacks")
+      .then(setStacks)
+      .catch(() => {});
   }, []);
 
   useEffect(refresh, [refresh]);
@@ -53,9 +59,27 @@ export function Guests() {
     refresh();
   };
 
+  // M3.6: re-run the cached inventory scan for one host.
+  const checkNow = async (host: Host) => {
+    setScanning(host.id);
+    try {
+      await api(`/hosts/${host.id}/scan`, { method: "POST" });
+    } finally {
+      setScanning(null);
+      refresh();
+    }
+  };
+
+  const updateStack = async (stack: ComposeStack) => {
+    const { jobId } = await api<{ jobId: string }>(`/stacks/${stack.id}/update`, {
+      method: "POST",
+    });
+    window.location.href = `/jobs?job=${jobId}`;
+  };
+
   return (
     <>
-      <PageHeader label="INFRA // GUESTS" title="Guests" />
+      <PageHeader label="INFRA // HOSTS + SERVICES" title="Infra" />
       <div className="mb-4 flex justify-end">
         <button
           type="button"
@@ -67,6 +91,45 @@ export function Guests() {
       </div>
 
       <GuestInventory />
+
+      <div className="mt-6">
+        <Panel label="COMPOSE STACKS">
+          {stacks.length === 0 ? (
+            <p className="py-4 text-center font-mono text-sm text-subtext0">
+              No compose stacks scanned yet. CHECK NOW on a host below, or wait for the nightly
+              scan.
+            </p>
+          ) : (
+            <table className="w-full border-collapse font-mono text-sm">
+              <thead>
+                <tr className="micro-label border-b border-surface1 text-left">
+                  <th className="py-2 pr-4 font-normal">STACK</th>
+                  <th className="py-2 pr-4 font-normal">HOST</th>
+                  <th className="py-2 pr-4 font-normal">SERVICES</th>
+                  <th className="py-2 pr-4 font-normal">STATUS</th>
+                  <th className="py-2 pr-4 font-normal">SCANNED</th>
+                  <th className="py-2 font-normal">ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stacks.map((s) => {
+                  const pending = s.services.filter((x) => x.updatable === true).length;
+                  return (
+                    <StackRow
+                      key={s.id}
+                      stack={s}
+                      pending={pending}
+                      expanded={expanded === s.id}
+                      onToggle={() => setExpanded(expanded === s.id ? null : s.id)}
+                      onUpdate={() => updateStack(s)}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </div>
 
       <div className="mt-6">
         <Panel label="SSH HOSTS">
@@ -116,6 +179,14 @@ export function Guests() {
                           className="text-sapphire hover:text-text"
                         >
                           PROBE
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => checkNow(h)}
+                          disabled={scanning === h.id}
+                          className="text-sapphire hover:text-text disabled:opacity-50"
+                        >
+                          {scanning === h.id ? "SCANNING…" : "CHECK NOW"}
                         </button>
                         <button
                           type="button"
@@ -300,6 +371,85 @@ function AddHostDrawer({
         </button>
       </form>
     </Drawer>
+  );
+}
+
+function StackRow({
+  stack,
+  pending,
+  expanded,
+  onToggle,
+  onUpdate,
+}: {
+  stack: ComposeStack;
+  pending: number;
+  expanded: boolean;
+  onToggle: () => void;
+  onUpdate: () => void;
+}) {
+  return (
+    <>
+      <tr className="border-b border-surface0 text-subtext1">
+        <td className="py-2 pr-4 text-text">{stack.project}</td>
+        <td className="py-2 pr-4">{stack.host.alias}</td>
+        <td className="py-2 pr-4">
+          {stack.services.length}
+          {pending > 0 && <span className="text-status-warn"> · {pending} update(s)</span>}
+        </td>
+        <td className="py-2 pr-4">
+          <div className="flex gap-2">
+            {pending > 0 && <StatusBadge status="warn" label="UPDATE AVAILABLE" />}
+            {stack.drift && <StatusBadge status="error" label="DRIFT" />}
+            {pending === 0 && !stack.drift && <StatusBadge status="ok" label="CURRENT" />}
+          </div>
+        </td>
+        <td className="py-2 pr-4">{new Date(stack.scannedAt).toLocaleString()}</td>
+        <td className="py-2">
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onUpdate}
+              className="text-sapphire hover:text-text"
+              title="pull && up -d for this project only"
+            >
+              UPDATE
+            </button>
+            <button type="button" onClick={onToggle} className="text-subtext0 hover:text-text">
+              {expanded ? "▾" : "▸"}
+            </button>
+          </div>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-b border-surface0">
+          <td colSpan={6} className="py-2">
+            <div className="border border-surface0 bg-crust/40 px-3 py-2 font-mono text-xs">
+              {stack.services.map((svc) => (
+                <div key={svc.name} className="flex gap-3 py-0.5">
+                  <span className="text-text">{svc.name}</span>
+                  <span className="text-subtext0">
+                    {svc.image}
+                    {svc.latest && svc.latest !== svc.tag && ` → ${svc.latest}`}
+                  </span>
+                  <span className={svc.state === "running" ? "text-status-ok" : "text-status-warn"}>
+                    {svc.state}
+                  </span>
+                  {svc.updatable === true && (
+                    <span className="text-status-warn">update available</span>
+                  )}
+                  {svc.updatable === null && (
+                    <span className="text-subtext0">registry unknown</span>
+                  )}
+                </div>
+              ))}
+              {stack.configFiles && (
+                <div className="pt-1 text-subtext0/70">{stack.configFiles}</div>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
