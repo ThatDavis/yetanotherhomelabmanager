@@ -58,7 +58,7 @@
 
 ## Active Feature
 
-*None. Run `/dev:start-feature` to begin — remaining in M3: email reports (M3.4) + the operator's updates/service-discovery refinements.*
+**M3.6: Compose stack inventory + selective updates** — Issue #28, branch `feature/28-compose-stack-inventory`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 
 ## Completed Features
 

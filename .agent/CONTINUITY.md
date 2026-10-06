@@ -27,6 +27,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 - [x] M3.2: Reboot orchestration (Issue #22, branch feature/22-reboot-orchestration)
 - [x] M3.3: Post-update verification (Issue #24, branch feature/24-post-update-verification)
 - [x] M3.5: Proxmox SSH host onboarding (Issue #25, branch feature/25-proxmox-host-onboarding, stacked on #24)
+- [ ] M3.6: Compose stack inventory + selective updates (Issue #28, branch feature/28-compose-stack-inventory)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -35,6 +36,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ## [DECISIONS]
 
+- 2026-10-06: Deep-plan validated M3.6 compose stack inventory (4-round operator interview). Key decisions: nightly cached scan (stacks never block page loads); update-available via ON-HOST digest checks (docker manifest inspect — host creds cover private registries, zero registry secrets in YAHLM); pinned-tag version numbers via app-side Hub/GHCR tag lists (best-effort, cached, degrades to updatable-only); OS check nightly over SSH (apt list --upgradable / dnf check-update); Guests section renamed Infra (nav economy — overview without digging); dashboard gains services strip + hosts-needing-updates card; container.update becomes stack-scoped (default all = current behavior); compose-only inventory with drift badge; standalone containers untouched. Changelogs/breaking-change flags deferred to M3.7 (GitHub Releases, curated mapping).
 - 2026-10-04: Deep-plan validated M3.3 post-update verification. Key decisions: per-schedule verifyUpdates toggle (default ON); host.verify step = SSH health.check + TCP-connect of operator-declared HostService ports FROM THE APP (no nc/bash dependency on hosts); pre-check failure skips that host's updates (audited); post-check failure excludes the host from the M3.2 reboot roll and fails the job; services edited in Guests EDIT drawer, wholesale-replaced via hosts PATCH.
 - 2026-10-01: Deep-plan validated M3.2 reboot orchestration. Key decisions: rolling reboots in Host.bootOrder sequence (boring strict order instead of a DAG — covers "X must come up first"); recovery gate = SSH reachable + health.check within 10 min before next host; abort roll on non-recovery, never re-touch rebooted hosts; UpdateSchedule.rebootAfterUpdate toggle drives auto-reboot after update jobs; manual per-host reboot via pre-flight-confirmed API; self host never auto-reboots (audited skip) and manual reboot refused (would kill the orchestrator). All work rides the M3.1 job engine.
 - 2026-10-01: Deep-plan validated M3.1 update scheduling. Key decisions: PVE/PBS host OS updated via SSH (Proxmox API has no apt endpoint) — operator registers nodes as Hosts, no SSH fields on Node model; containers-in-guests included in M3.1 scope (docker compose projects only, standalone untouched); job engine (Job/JobStep + in-process runner + SSE/poll) is the core new primitive; schedules are weekly day(s)+time with OS/container toggles; per-host failure isolation + reboot-pending surfaced (reboot is M3.2); self-host open question resolved by `self` flag on Host.
@@ -161,6 +163,11 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ Tests against real-TLS mock PVE (server 95/95, web 12/12); stack restarted at :3000 for test drive |
 | 2026-10-06 | Completed feature: Post-update verification (M3.3, PR #26, CI green). Merged after #23. |
 | 2026-10-06 | Completed feature: Proxmox SSH host onboarding (M3.5, PR #27, CI green). Retargeted to main after #26 merged; merged same session. |
+| 2026-10-06 | Started feature: Compose stack inventory + selective updates (M3.6, Issue #28) on branch feature/28-compose-stack-inventory. 4-round operator interview = deep-plan; design in docs/SPEC.md §M3.6. |
+|  |    — Schema: ComposeStack model + Host OS-check cache fields, migration |
+|  |    — stacks.scan + os.check steps, nightly scheduler, check-now endpoint, mocked tests |
+|  |    — Update-available: on-host digest checks + Hub/GHCR tag lists with cache |
+|  |    — UI: Infra rename + stacks panel + dashboard strip/hosts card + stack-scoped container.update |
 
 ## [DISCOVERIES]
 
