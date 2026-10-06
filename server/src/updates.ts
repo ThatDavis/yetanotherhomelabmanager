@@ -11,7 +11,7 @@ const OS_UPDATE_TIMEOUT_MS = 30 * 60 * 1000; // apt over VPN can be slow
 const CONTAINER_TIMEOUT_MS = 10 * 60 * 1000;
 
 // Probe: print the first available package manager command, nothing else.
-const PM_PROBE = "for c in apt-get dnf yum; do command -v $c && break; done";
+export const PM_PROBE = "for c in apt-get dnf yum; do command -v $c && break; done";
 
 // Reboot-pending probe, exit-code shaped: 0 = reboot pending, 1 = not pending.
 // Debian/Ubuntu drop /var/run/reboot-required; RHEL family uses needs-restarting
@@ -21,7 +21,7 @@ const REBOOT_PROBE =
   "if command -v needs-restarting >/dev/null 2>&1; then needs-restarting -r >/dev/null 2>&1 || exit 0; fi; " +
   "exit 1";
 
-function pmFromProbe(output: string): "apt" | "dnf" | "yum" | null {
+export function pmFromProbe(output: string): "apt" | "dnf" | "yum" | null {
   const path = output.trim().split("\n").pop() ?? "";
   if (path.endsWith("apt-get")) return "apt";
   if (path.endsWith("dnf")) return "dnf";
