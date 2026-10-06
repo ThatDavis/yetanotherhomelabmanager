@@ -1,5 +1,11 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { api, type Node, type ProbeResult } from "../api";
+import {
+  type AgentIpsData,
+  api,
+  type HostRegisterResult,
+  type Node,
+  type ProbeResult,
+} from "../api";
 import { Drawer } from "../components/Drawer";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
@@ -8,6 +14,19 @@ type DrawerState =
   | { kind: "add" }
   | { kind: "edit"; node: Node }
   | { kind: "test" | "sync"; node: Node; result: ProbeResult | null; error: string | null }
+  | {
+      kind: "host";
+      node: Node;
+      result: HostRegisterResult | null;
+      error: string | null;
+      script: string | null;
+    }
+  | {
+      kind: "agent";
+      node: Node;
+      result: (ProbeResult & { data?: AgentIpsData }) | null;
+      error: string | null;
+    }
   | null;
 
 const inputCls =
@@ -50,6 +69,54 @@ export function Nodes() {
   const unpin = async (node: Node) => {
     await api(`/nodes/${node.id}/unpin`, { method: "POST" });
     refresh();
+  };
+
+  // M3.5 onboarding: create the SSH host from the node URL, then present the
+  // bootstrap script — the master key still installs by a one-time manual run.
+  const registerHost = async (node: Node) => {
+    setDrawer({ kind: "host", node, result: null, error: null, script: null });
+    try {
+      const result = await api<HostRegisterResult>(`/nodes/${node.id}/register-host`, {
+        method: "POST",
+      });
+      const script = await fetch(`/api/hosts/${result.host.id}/bootstrap`).then((r) => r.text());
+      setDrawer({ kind: "host", node, result, error: null, script });
+    } catch (err) {
+      setDrawer({ kind: "host", node, result: null, error: (err as Error).message, script: null });
+    }
+  };
+
+  const agentIps = async (node: Node) => {
+    setDrawer({ kind: "agent", node, result: null, error: null });
+    try {
+      const result = await api<ProbeResult & { data?: AgentIpsData }>(
+        `/nodes/${node.id}/agent-ips`,
+      );
+      setDrawer({ kind: "agent", node, result, error: null });
+    } catch (err) {
+      setDrawer({ kind: "agent", node, result: null, error: (err as Error).message });
+    }
+  };
+
+  // Register one agent-discovered VM as an SSH host (first address wins).
+  const [guestMsgs, setGuestMsgs] = useState<Record<string, string>>({});
+  const registerGuestHost = async (guest: { name: string; addresses: string[] }) => {
+    const alias = guest.name
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    try {
+      await api("/hosts", {
+        method: "POST",
+        body: JSON.stringify({ alias, hostname: guest.addresses[0], username: "root" }),
+      });
+      setGuestMsgs((m) => ({
+        ...m,
+        [guest.name]: `registered as "${alias}" — bootstrap in Guests`,
+      }));
+    } catch (err) {
+      setGuestMsgs((m) => ({ ...m, [guest.name]: (err as Error).message }));
+    }
   };
 
   const remove = async (node: Node) => {
@@ -121,6 +188,20 @@ export function Nodes() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => registerHost(n)}
+                      className="text-sapphire hover:text-text"
+                    >
+                      HOST
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => agentIps(n)}
+                      className="text-sapphire hover:text-text"
+                    >
+                      AGENT&nbsp;IPS
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setDrawer({ kind: "edit", node: n })}
                       className="text-subtext0 hover:text-text"
                     >
@@ -180,6 +261,89 @@ export function Nodes() {
                 <pre className="overflow-x-auto border border-surface0 bg-crust p-3 font-mono text-xs leading-relaxed text-subtext1">
                   {drawer.result.output}
                 </pre>
+              </>
+            )}
+          </>
+        )}
+      </Drawer>
+
+      <Drawer
+        title={`HOST // ${drawer?.kind === "host" ? drawer.node.name : ""}`}
+        open={drawer?.kind === "host"}
+        onClose={() => setDrawer(null)}
+      >
+        {drawer?.kind === "host" && (
+          <>
+            {!drawer.result && !drawer.error && (
+              <p className="font-mono text-sm text-status-running">Registering…</p>
+            )}
+            {drawer.error && <p className="font-mono text-sm text-status-error">{drawer.error}</p>}
+            {drawer.result && (
+              <>
+                <div className="mb-3 flex items-center gap-3">
+                  <StatusBadge
+                    status="ok"
+                    label={drawer.result.existing ? "EXISTING" : "CREATED"}
+                  />
+                  <span className="font-mono text-xs text-subtext0">
+                    {drawer.result.host.alias} → {drawer.result.host.hostname} (root)
+                  </span>
+                </div>
+                <p className="mb-2 font-mono text-xs text-subtext0">
+                  Run this once as root on the host — the Proxmox API cannot install the key
+                  remotely. Afterwards PROBE it from Guests.
+                </p>
+                {drawer.script && (
+                  <pre className="overflow-x-auto border border-surface0 bg-crust p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap text-subtext1">
+                    {drawer.script}
+                  </pre>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </Drawer>
+
+      <Drawer
+        title={`AGENT.IPS // ${drawer?.kind === "agent" ? drawer.node.name : ""}`}
+        open={drawer?.kind === "agent"}
+        onClose={() => setDrawer(null)}
+      >
+        {drawer?.kind === "agent" && (
+          <>
+            {!drawer.result && !drawer.error && (
+              <p className="font-mono text-sm text-status-running">Querying guest agents…</p>
+            )}
+            {drawer.error && <p className="font-mono text-sm text-status-error">{drawer.error}</p>}
+            {drawer.result && (
+              <>
+                <div className="mb-3 flex items-center gap-3">
+                  <StatusBadge status={drawer.result.ok ? "ok" : "error"} />
+                  <span className="font-mono text-xs text-subtext0">
+                    {drawer.result.durationMs}ms
+                  </span>
+                </div>
+                <pre className="mb-4 overflow-x-auto border border-surface0 bg-crust p-3 font-mono text-xs leading-relaxed text-subtext1">
+                  {drawer.result.output}
+                </pre>
+                {(drawer.result.data?.guests ?? []).map((g) => (
+                  <div key={g.vmid} className="mb-2 flex items-center gap-3 font-mono text-sm">
+                    <span className="text-text">{g.name}</span>
+                    <span className="text-subtext0">{g.addresses.join(", ")}</span>
+                    <button
+                      type="button"
+                      onClick={() => registerGuestHost(g)}
+                      className="ml-auto text-sapphire hover:text-text"
+                    >
+                      REGISTER
+                    </button>
+                  </div>
+                ))}
+                {Object.entries(guestMsgs).map(([name, msg]) => (
+                  <p key={name} className="font-mono text-xs text-subtext0">
+                    {name}: {msg}
+                  </p>
+                ))}
               </>
             )}
           </>

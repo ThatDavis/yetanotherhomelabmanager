@@ -368,6 +368,69 @@ export function nodeSync(node: Node): Promise<StepResult> {
   });
 }
 
+// guest.agent-ips — ask the QEMU guest agent for each VM's addresses, so
+// agent-enabled guests can be registered as SSH hosts without typing IPs
+// (LXC has no agent API and stays manual). Read-only probe.
+type AgentInterface = {
+  name?: string;
+  "ip-addresses"?: { "ip-address"?: string; "ip-address-type"?: string }[];
+};
+
+export function guestAgentIps(node: Node): Promise<StepResult> {
+  return runStep("guest.agent-ips", node.name, {}, async () => {
+    const secret = await loadSecret(`node-token-${node.id}`);
+    if (!secret) return { ok: false, output: "no API token secret stored for this node" };
+    const guests = await prisma.guest.findMany({
+      where: { nodeDbId: node.id, type: "qemu" },
+      orderBy: { vmid: "asc" },
+    });
+    if (guests.length === 0) {
+      return { ok: true, output: "no qemu guests on this node", data: { guests: [] } };
+    }
+
+    const found: { vmid: number; name: string; addresses: string[] }[] = [];
+    const lines: string[] = [];
+    for (const g of guests) {
+      const res = await pveRequest(
+        node,
+        secret,
+        `/api2/json/nodes/${g.pveNode}/qemu/${g.vmid}/agent/network-get-interfaces`,
+      );
+      const fpErr = fingerprintError(node, res.fingerprint);
+      if (fpErr) return { ok: false, output: fpErr };
+      if (res.status !== 200) {
+        lines.push(`${g.name}: agent not reachable (HTTP ${res.status})`);
+        continue;
+      }
+      const raw = pveData(res.data);
+      const ifaces: AgentInterface[] =
+        raw && typeof raw === "object" && "result" in raw && Array.isArray(raw.result)
+          ? raw.result
+          : [];
+      const addresses: string[] = [];
+      for (const iface of ifaces) {
+        for (const a of iface["ip-addresses"] ?? []) {
+          const ip = a["ip-address"];
+          if (!ip || a["ip-address-type"] !== "ipv4") continue;
+          if (ip.startsWith("127.") || ip.startsWith("169.254.")) continue;
+          addresses.push(ip);
+        }
+      }
+      if (addresses.length > 0) {
+        found.push({ vmid: g.vmid, name: g.name, addresses });
+        lines.push(`${g.name} (${g.vmid}): ${addresses.join(", ")}`);
+      } else {
+        lines.push(`${g.name} (${g.vmid}): agent up, no usable ipv4`);
+      }
+    }
+    return {
+      ok: true,
+      output: lines.join("\n") || "no agent-enabled guests",
+      data: { guests: found },
+    };
+  });
+}
+
 // ping.check — one probe against a PingTarget with the alertAfter state machine.
 // Down after `alertAfter` consecutive failures; up on first success.
 // State transitions are audited as ping.transition (notifications land in M2.3).
