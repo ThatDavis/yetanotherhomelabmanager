@@ -4,11 +4,16 @@ import { buildServer } from "../src/app.js";
 import { prisma } from "../src/db.js";
 import { execOnHost } from "../src/executor.js";
 import { runNightlyScans } from "../src/scheduler.js";
-import { splitImageRef } from "../src/stacks.js";
+import { clearTagCache, splitImageRef } from "../src/stacks.js";
 
 vi.mock("../src/executor.js", () => ({
   execOnHost: vi.fn(),
 }));
+
+// App-side registry tag lists are stubbed network-wide; per-test
+// implementations decide Hub/GHCR responses, default is "not found".
+const fetchMock = vi.fn();
+vi.stubGlobal("fetch", fetchMock);
 
 const execMock = vi.mocked(execOnHost);
 const app = buildServer({ spaDir: "/nonexistent", auth: false });
@@ -53,7 +58,7 @@ const INSPECT = JSON.stringify([
   },
 ]);
 
-function scanHandler(opts: { hash?: string | null } = {}) {
+function scanHandler(opts: { hash?: string | null; remoteDigest?: string } = {}) {
   return (command: string) => {
     if (command === "command -v docker")
       return { ok: true, output: "/usr/bin/docker", exitCode: 0, lines: [] };
@@ -72,6 +77,16 @@ function scanHandler(opts: { hash?: string | null } = {}) {
     }
     if (command.includes("docker inspect"))
       return { ok: true, output: INSPECT, exitCode: 0, lines: [] };
+    if (command.includes("buildx imagetools inspect")) {
+      const digest =
+        opts.remoteDigest ?? (command.includes("ghcr.io/me/web") ? "abc123" : "def456");
+      return {
+        ok: true,
+        output: JSON.stringify({ digest: `sha256:${digest}` }),
+        exitCode: 0,
+        lines: [],
+      };
+    }
     if (command.startsWith("for c in apt-get"))
       return { ok: true, output: "/usr/bin/apt-get", exitCode: 0, lines: [] };
     if (command.startsWith("apt-get update"))
@@ -86,7 +101,7 @@ async function makeHost(alias: string) {
   });
 }
 
-function mockScan(opts: { hash?: string | null } = {}) {
+function mockScan(opts: { hash?: string | null; remoteDigest?: string } = {}) {
   const handler = scanHandler(opts);
   execMock.mockImplementation(async (_h, command: string) => ({
     ...handler(command),
@@ -94,8 +109,15 @@ function mockScan(opts: { hash?: string | null } = {}) {
   }));
 }
 
+function jsonResponse(body: unknown, ok = true): Response {
+  return { ok, status: ok ? 200 : 404, json: async () => body } as Response;
+}
+
 afterEach(async () => {
   execMock.mockReset();
+  fetchMock.mockReset();
+  fetchMock.mockResolvedValue(jsonResponse({}, false)); // registries: default 404
+  clearTagCache();
   await prisma.composeStack.deleteMany({ where: { host: { alias: { startsWith: PREFIX } } } });
   await prisma.jobStep.deleteMany({
     where: { job: { schedule: { name: { startsWith: PREFIX } } } },
@@ -140,8 +162,8 @@ test("stacks.scan persists projects with services and no drift when hashes match
       version: "1.2.3",
       state: "running",
       configHash: "aaa",
-      updatable: null,
-      latest: null,
+      updatable: false, // remote digest equals the local one
+      latest: null, // registries 404 in tests by default
     },
   ]);
   expect(res.json().os.data.pending).toBe(5);
@@ -191,6 +213,71 @@ test("stacks.scan skips hosts without docker", async () => {
   const res = await app.inject({ method: "POST", url: `/api/hosts/${host.id}/scan` });
   expect(res.json().stacks.ok).toBe(true);
   expect(res.json().stacks.output).toContain("docker not installed");
+});
+
+test("flags updatable when the remote digest differs from local", async () => {
+  const host = await makeHost(`${PREFIX}-upd`);
+  mockScan({ remoteDigest: "fff999" });
+
+  const res = await app.inject({ method: "POST", url: `/api/hosts/${host.id}/scan` });
+  expect(res.json().stacks.ok).toBe(true);
+  expect(res.json().stacks.output).toContain("1 update(s) available");
+
+  const rows = await prisma.composeStack.findMany({ where: { hostId: host.id } });
+  for (const row of rows) {
+    for (const s of JSON.parse(row.services)) {
+      expect(s.updatable).toBe(true);
+      expect(s.latest).toBeNull();
+    }
+  }
+});
+
+test("tag lists provide latest versions for pinned tags (GHCR + Hub)", async () => {
+  const host = await makeHost(`${PREFIX}-latest`);
+  mockScan(); // digests equal — tag lists drive the verdict
+  fetchMock.mockImplementation(async (url: string | URL) => {
+    const u = String(url);
+    if (u === "https://ghcr.io/token?scope=repository:me/web:pull")
+      return jsonResponse({ token: "t" });
+    if (u === "https://ghcr.io/v2/me/web/tags/list")
+      return jsonResponse({ tags: ["1.2.3", "1.3.9", "1.4.0"] });
+    if (u.includes("hub.docker.com/v2/repositories/library/postgres/tags"))
+      return jsonResponse({ results: [{ name: "16" }, { name: "16.2" }, { name: "latest" }] });
+    return jsonResponse({}, false);
+  });
+
+  await app.inject({ method: "POST", url: `/api/hosts/${host.id}/scan` });
+  const rows = await prisma.composeStack.findMany({ where: { hostId: host.id } });
+  const web = JSON.parse(rows.find((r) => r.project === "web")?.services ?? "[]")[0];
+  expect(web.updatable).toBe(true);
+  expect(web.latest).toBe("1.4.0");
+  const db = JSON.parse(rows.find((r) => r.project === "db")?.services ?? "[]")[0];
+  expect(db.latest).toBe("16.2");
+  expect(db.updatable).toBe(true); // 16 → 16.2 even with equal digests
+});
+
+test("registry failures degrade to unknown instead of failing the scan", async () => {
+  const host = await makeHost(`${PREFIX}-degrade`);
+  execMock.mockImplementation(async (_h, command: string) => {
+    if (command === "command -v docker")
+      return { ok: true, output: "/usr/bin/docker", exitCode: 0, lines: [] };
+    if (command === "docker compose ls --all --format json")
+      return { ok: true, output: COMPOSE_LS, exitCode: 0, lines: [] };
+    if (command.includes("docker inspect"))
+      return { ok: true, output: INSPECT, exitCode: 0, lines: [] };
+    return { ok: false, output: "! buildx unavailable", exitCode: 1, lines: [] };
+  });
+  fetchMock.mockRejectedValue(new Error("network down"));
+
+  const res = await app.inject({ method: "POST", url: `/api/hosts/${host.id}/scan` });
+  expect(res.json().stacks.ok).toBe(true);
+  const rows = await prisma.composeStack.findMany({ where: { hostId: host.id } });
+  for (const row of rows) {
+    for (const s of JSON.parse(row.services)) {
+      expect(s.updatable).toBeNull();
+      expect(s.latest).toBeNull();
+    }
+  }
 });
 
 test("nightly scans run os.check only on hosts in an enabled schedule's scope", async () => {

@@ -4,10 +4,158 @@ import { execOnHost } from "./executor.js";
 import { runStep, type StepResult } from "./steps.js";
 import { PM_PROBE, pmFromProbe } from "./updates.js";
 
+// --- Update-available detection ---
+
+// Remote digest for an image ref, resolved ON the host so its registry logins
+// apply (private registries work with zero secrets stored here). Multi-arch
+// manifests resolve to the index digest, which is what RepoDigests records.
+const REMOTE_DIGEST_TIMEOUT_MS = 30_000;
+
+async function remoteDigest(host: Host, ref: string): Promise<string | null> {
+  const res = await execOnHost(
+    host,
+    `docker buildx imagetools inspect ${shellQuote(ref)} --format '{{json .Manifest}}'`,
+    REMOTE_DIGEST_TIMEOUT_MS,
+  );
+  if (!res.ok) return null;
+  try {
+    const manifest: unknown = JSON.parse(res.output.trim().split("\n").pop() ?? "");
+    if (manifest && typeof manifest === "object" && "digest" in manifest) {
+      const d = (manifest as { digest?: unknown }).digest;
+      return typeof d === "string" ? d.replace(/^sha256:/, "") : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+const VERSION_PREFIX = /^(v?\d+(?:\.\d+){0,2})/;
+
+function versionKey(tag: string): number[] | null {
+  const m = VERSION_PREFIX.exec(tag);
+  const key = m?.[1];
+  if (!key) return null;
+  return key
+    .replace(/^v/, "")
+    .split(".")
+    .map((n) => Number.parseInt(n, 10));
+}
+
+function versionGreater(a: number[], b: number[]): boolean {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d !== 0) return d > 0;
+  }
+  return false;
+}
+
+// App-side tag lists for pinned-tag version numbers. Best-effort by design:
+// failures degrade to digest-only "update available" signals. Hub anonymous
+// API is rate-limited (100 req/6h per IP) — the 6h cache keeps nightly scans
+// well inside that at homelab scale.
+const TAG_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const tagCache = new Map<string, { tags: string[]; at: number }>();
+
+/** Test hook: reset the tag-list cache between tests. */
+export function clearTagCache(): void {
+  tagCache.clear();
+}
+
+function hubRepoName(repo: string): string | null {
+  if (repo.includes(".") && repo.includes("/")) return null; // third-party registry — not Hub
+  if (repo.includes("/")) return repo; // ns/name
+  return `library/${repo}`; // single name is the official library
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(10_000) });
+}
+
+async function registryTags(repo: string): Promise<string[] | null> {
+  const cached = tagCache.get(repo);
+  if (cached && Date.now() - cached.at < TAG_CACHE_TTL_MS) return cached.tags;
+  let tags: string[] | null = null;
+  try {
+    if (repo.startsWith("ghcr.io/")) {
+      const name = repo.slice("ghcr.io/".length);
+      const tokenRes = await fetchWithTimeout(
+        `https://ghcr.io/token?scope=repository:${name}:pull`,
+      );
+      const token = tokenRes.ok ? ((await tokenRes.json()) as { token?: string }).token : null;
+      if (!token) throw new Error("ghcr token denied");
+      const res = await fetchWithTimeout(`https://ghcr.io/v2/${name}/tags/list`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      if (res.ok) tags = ((await res.json()) as { tags?: string[] }).tags ?? [];
+    } else {
+      const name = hubRepoName(repo);
+      if (!name) return null; // unknown registry — no app-side tag list
+      const res = await fetchWithTimeout(
+        `https://hub.docker.com/v2/repositories/${name}/tags?page_size=100`,
+      );
+      if (res.ok) {
+        const body = (await res.json()) as { results?: { name?: string }[] };
+        tags = (body.results ?? []).map((t) => t.name ?? "").filter(Boolean);
+      }
+    }
+  } catch {
+    tags = null; // best-effort: network/registry failures degrade quietly
+  }
+  if (tags) tagCache.set(repo, { tags, at: Date.now() });
+  return tags;
+}
+
+/** Best-effort newest version tag for a repo, given the current tag shape. */
+async function latestVersion(repo: string, currentTag: string): Promise<string | null> {
+  const currentKey = versionKey(currentTag);
+  if (!currentKey) return null; // "latest" and friends: digest compare speaks
+  const tags = await registryTags(repo);
+  if (!tags) return null;
+  let best: { tag: string; key: number[] } | null = null;
+  for (const tag of tags) {
+    const key = versionKey(tag);
+    if (!key) continue;
+    if (!best || versionGreater(key, best.key)) best = { tag, key };
+  }
+  return best?.tag ?? null;
+}
+
+type RegistryInfo = { updatable: boolean | null; latest: string | null };
+
+// Decide updatable/latest for one image ref. Digest compare is authoritative
+// when both digests are known; the tag list only adds version NUMBERS for
+// pinned tags. Anything missing → null fields, never a failure.
+async function checkImageUpdate(
+  host: Host,
+  ref: string,
+  localDigest: string,
+): Promise<RegistryInfo> {
+  const { repo, tag } = splitImageRef(ref);
+  const [remote, latest] = await Promise.all([
+    remoteDigest(host, ref),
+    tag ? latestVersion(repo, tag) : Promise.resolve(null),
+  ]);
+  let updatable: boolean | null = null;
+  if (remote && localDigest) updatable = remote !== localDigest;
+  if (latest && tag) {
+    const cur = versionKey(tag);
+    const nxt = versionKey(latest);
+    if (cur && nxt && versionGreater(nxt, cur)) {
+      updatable = true; // registry tag list shows something newer
+    } else if (updatable === null) {
+      updatable = false; // registry sees nothing newer and digests unknown
+    }
+  }
+  return { updatable, latest };
+}
+
 // Compose stack inventory (M3.6). stacks.scan discovers what runs on each
 // docker host and caches it in ComposeStack rows so overview surfaces never
-// block on SSH. Registry/update-available checks (sub-task 3) extend the
-// service entries stored here.
+// block on SSH. Update-available detection: on-host digest compares (the
+// host's own registry creds cover private registries; YAHLM stores no
+// registry secrets) plus best-effort Docker Hub/GHCR tag lists for pinned
+// tags, app-side with an in-process cache.
 
 export type StackService = {
   name: string;
@@ -148,6 +296,24 @@ export function stacksScan(host: Host): Promise<StepResult> {
       byProject.set(project, list);
     }
 
+    // Update-available pass, once per unique image across all projects.
+    // Failures degrade to null fields — they never fail the scan.
+    const refs = new Map<string, string>(); // image ref → local digest
+    for (const services of byProject.values()) {
+      for (const s of services) refs.set(s.image, s.digest);
+    }
+    const registry = new Map<string, RegistryInfo>();
+    for (const [ref, digest] of refs) {
+      registry.set(ref, await checkImageUpdate(host, ref, digest));
+    }
+    for (const services of byProject.values()) {
+      for (const s of services) {
+        const r = registry.get(s.image);
+        s.updatable = r?.updatable ?? null;
+        s.latest = r?.latest ?? null;
+      }
+    }
+
     const lines: string[] = [];
     let driftCount = 0;
     for (const p of projects) {
@@ -173,10 +339,11 @@ export function stacksScan(host: Host): Promise<StepResult> {
           drift,
         },
       });
+      const pending = services.filter((s) => s.updatable === true).length;
       lines.push(
         `${name}: ${services.length} service(s)${drift ? " DRIFT" : ""}${
-          services.some((s) => s.state !== "running") ? " (some not running)" : ""
-        }`,
+          pending > 0 ? `, ${pending} update(s) available` : ""
+        }${services.some((s) => s.state !== "running") ? " (some not running)" : ""}`,
       );
     }
     // Prune stacks this host no longer reports.
