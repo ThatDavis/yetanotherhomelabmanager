@@ -3,6 +3,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { buildServer } from "../src/app.js";
 import { prisma } from "../src/db.js";
 import { execOnHost } from "../src/executor.js";
+import { drainQueue, enqueueUpdateJob } from "../src/jobs.js";
 import { runNightlyScans } from "../src/scheduler.js";
 import { clearTagCache, splitImageRef } from "../src/stacks.js";
 
@@ -304,4 +305,73 @@ test("nightly scans run os.check only on hosts in an enabled schedule's scope", 
   const stacksB = await prisma.composeStack.count({ where: { hostId: outOfScope.id } });
   expect(stacksA).toBe(2);
   expect(stacksB).toBe(2);
+});
+
+test("stack-scoped container.update only touches listed projects", async () => {
+  const host = await makeHost(`${PREFIX}-scoped`);
+  mockScan();
+  const schedule = await prisma.updateSchedule.create({
+    data: {
+      name: `${PREFIX}-scoped-sched`,
+      daysOfWeek: [1],
+      timeOfDay: "03:00",
+      osUpdates: false,
+      containerUpdates: true,
+      containerProjects: JSON.stringify(["web"]),
+      verifyUpdates: false,
+      hosts: { connect: { id: host.id } },
+    },
+  });
+
+  const jobId = await enqueueUpdateJob(schedule.id, "manual");
+  await drainQueue();
+
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: jobId },
+    include: { steps: true },
+  });
+  expect(job.status).toBe("succeeded");
+  const step = job.steps.find((s) => s.name === "container.update");
+  expect(step?.ok).toBe(true);
+  expect(step?.output).toContain("project web: ok");
+  expect(step?.output).not.toContain("project db:");
+});
+
+test("stacks API lists rows and per-stack update enqueues a stack job", async () => {
+  const host = await makeHost(`${PREFIX}-api`);
+  await prisma.composeStack.create({
+    data: {
+      hostId: host.id,
+      project: "web",
+      configFiles: "/srv/web/compose.yml",
+      services: JSON.stringify([]),
+    },
+  });
+
+  const list = await app.inject({ method: "GET", url: "/api/stacks" });
+  expect(list.statusCode).toBe(200);
+  const row = list
+    .json()
+    .find(
+      (s: { project: string; host: { alias: string } }) =>
+        s.project === "web" && s.host.alias === host.alias,
+    );
+  expect(row).toBeDefined();
+
+  mockScan();
+  const res = await app.inject({ method: "POST", url: `/api/stacks/${row.id}/update` });
+  expect(res.statusCode).toBe(202);
+
+  await drainQueue();
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: res.json().jobId },
+    include: { steps: true, hosts: true },
+  });
+  expect(job.kind).toBe("stack");
+  expect(job.project).toBe("web");
+  expect(job.hosts.map((h) => h.id)).toEqual([host.id]);
+  expect(job.steps.find((s) => s.name === "container.update")?.ok).toBe(true);
+
+  const missing = await app.inject({ method: "POST", url: "/api/stacks/nope/update" });
+  expect(missing.statusCode).toBe(404);
 });

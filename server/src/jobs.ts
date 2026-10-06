@@ -1,4 +1,4 @@
-import type { Host, JobStep } from "@prisma/client";
+import type { Host, JobStep, UpdateSchedule } from "@prisma/client";
 import { audit } from "./audit.js";
 import { prisma } from "./db.js";
 import type { StepResult } from "./steps.js";
@@ -9,12 +9,30 @@ import { containerUpdate, hostReboot, hostVerify, type OsUpdateData, osUpdate } 
 // Job/JobStep rows — so the job center renders history and the SSE stream
 // only carries liveness. Every step already audits itself via runStep.
 
-type StepFn = (host: Host) => ReturnType<typeof osUpdate>;
+type StepFn = (host: Host, schedule: UpdateSchedule) => Promise<StepResult>;
 
-const PLANNED_STEPS: { name: string; toggle: "osUpdates" | "containerUpdates"; fn: StepFn }[] = [
+const PLANNED_STEPS: {
+  name: string;
+  toggle: "osUpdates" | "containerUpdates";
+  fn: StepFn;
+}[] = [
   { name: "os.update", toggle: "osUpdates", fn: osUpdate },
-  { name: "container.update", toggle: "containerUpdates", fn: containerUpdate },
+  {
+    name: "container.update",
+    toggle: "containerUpdates",
+    fn: (host, schedule) =>
+      containerUpdate(host, { projects: parseContainerProjects(schedule) }),
+  },
 ];
+
+export function parseContainerProjects(schedule: UpdateSchedule): string[] {
+  try {
+    const parsed: unknown = JSON.parse(schedule.containerProjects);
+    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 let running = false;
 const queue: string[] = [];
@@ -42,6 +60,26 @@ export async function enqueueRebootJob(
       trigger,
       ...(scheduleId !== undefined ? { scheduleId } : {}),
       hosts: { connect: hostIds.map((id) => ({ id })) },
+    },
+  });
+  queue.push(job.id);
+  void pump();
+  return job.id;
+}
+
+/** Ad-hoc single-stack update job (M3.6): one project on one host. */
+export async function enqueueStackJob(stackId: string): Promise<string | null> {
+  const stack = await prisma.composeStack.findUnique({
+    where: { id: stackId },
+    include: { host: true },
+  });
+  if (!stack) return null;
+  const job = await prisma.job.create({
+    data: {
+      kind: "stack",
+      trigger: "manual",
+      project: stack.project,
+      hosts: { connect: { id: stack.hostId } },
     },
   });
   queue.push(job.id);
@@ -78,6 +116,19 @@ async function runJob(jobId: string): Promise<void> {
     await runRebootRoll(job.id, job.hosts);
     return;
   }
+  if (job.kind === "stack") {
+    const host = job.hosts[0];
+    if (!host) {
+      await fail(jobId, "stack job has no host");
+      return;
+    }
+    emit(jobId, "status", { status: "running" });
+    const result = await containerUpdate(host, { projects: [job.project] });
+    await recordStep(jobId, host.id, "container.update", "", result);
+    await finishJob(jobId, result.ok ? "succeeded" : "failed");
+    emit(jobId, "status", { status: result.ok ? "succeeded" : "failed" });
+    return;
+  }
   const schedule = job.schedule;
   if (!schedule) {
     await fail(jobId, "schedule was deleted before the job ran");
@@ -107,7 +158,7 @@ async function runJob(jobId: string): Promise<void> {
     }
 
     for (const step of steps) {
-      const result = await step.fn(host);
+      const result = await step.fn(host, schedule);
       const rebootPending = (result.data as OsUpdateData | undefined)?.rebootPending ?? false;
       if (rebootPending) pendingReboot.add(host.id);
       await recordStep(jobId, host.id, step.name, "", result, { rebootPending });

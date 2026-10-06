@@ -262,55 +262,77 @@ export function hostReboot(
 
 export type ContainerUpdateData = { projects: { name: string; ok: boolean }[] };
 
-// container.update — `pull && up -d` every Docker Compose project on the host.
-// Hosts without docker or the compose plugin are skipped (ok, with a note) —
+// container.update — `pull && up -d` Docker Compose projects on the host,
+// optionally filtered to a project list (M3.6: per-stack scope). Hosts
+// without docker or the compose plugin are skipped (ok, with a note) —
 // the schedule toggle is the operator's intent per host, and the output shows
 // exactly what happened. Standalone containers are never touched.
-export function containerUpdate(host: Host): Promise<StepResult> {
-  return runStep("container.update", host.alias, {}, async () => {
-    const docker = await execOnHost(host, "command -v docker");
-    if (!docker.ok) {
-      return { ok: true, output: "docker not installed — skipped", data: { projects: [] } };
-    }
-    const plugin = await execOnHost(host, "docker compose version");
-    if (!plugin.ok) {
+export function containerUpdate(
+  host: Host,
+  opts: { projects?: string[] } = {},
+): Promise<StepResult> {
+  return runStep(
+    "container.update",
+    host.alias,
+    { projects: opts.projects ?? [] },
+    async () => {
+      const docker = await execOnHost(host, "command -v docker");
+      if (!docker.ok) {
+        return {
+          ok: true,
+          output: "docker not installed — skipped",
+          data: { projects: [] },
+        };
+      }
+      const plugin = await execOnHost(host, "docker compose version");
+      if (!plugin.ok) {
+        return {
+          ok: true,
+          output: "docker compose plugin not installed — skipped",
+          data: { projects: [] },
+        };
+      }
+
+      const ls = await execOnHost(host, "docker compose ls --all --format json");
+      if (!ls.ok) return { ok: false, output: `docker compose ls failed\n${ls.output}` };
+      const projects = parseComposeProjects(ls.output);
+      if (!projects) return { ok: false, output: "unexpected docker compose ls output (not JSON)" };
+      const filter = opts.projects ?? [];
+      const named = projects.filter((p): p is typeof p & { Name: string } => typeof p.Name === "string");
+      const wanted = filter.length > 0 ? named.filter((p) => filter.includes(p.Name)) : named;
+      const missing = filter.filter((name) => !named.some((p) => p.Name === name));
+      if (wanted.length === 0 && missing.length === 0) {
+        return { ok: true, output: "no compose projects", data: { projects: [] } };
+      }
+
+      const results: { name: string; ok: boolean }[] = [];
+      const lines: string[] = [];
+      for (const name of missing) lines.push(`project ${name}: not found on host — skipped`);
+      for (const project of wanted) {
+        const name = project.Name as string;
+        const files = (project.ConfigFiles ?? "")
+          .split(",")
+          .map((f) => f.trim())
+          .filter(Boolean)
+          .map((f) => `-f ${shellQuote(f)}`)
+          .join(" ");
+        const base = `docker compose -p ${shellQuote(name)} ${files}`.trim();
+        const res = await execOnHost(
+          host,
+          `${base} pull && ${base} up -d`,
+          CONTAINER_TIMEOUT_MS,
+        );
+        results.push({ name, ok: res.ok });
+        lines.push(`project ${name}: ${res.ok ? "ok" : "FAILED"}`);
+        if (!res.ok) lines.push(res.output);
+      }
+      lines.push("standalone containers untouched by design");
+
       return {
-        ok: true,
-        output: "docker compose plugin not installed — skipped",
-        data: { projects: [] },
+        ok: results.every((r) => r.ok),
+        output: lines.join("\n"),
+        data: { projects: results } satisfies ContainerUpdateData,
       };
-    }
-
-    const ls = await execOnHost(host, "docker compose ls --all --format json");
-    if (!ls.ok) return { ok: false, output: `docker compose ls failed\n${ls.output}` };
-    const projects = parseComposeProjects(ls.output);
-    if (!projects) return { ok: false, output: "unexpected docker compose ls output (not JSON)" };
-    if (projects.length === 0) {
-      return { ok: true, output: "no compose projects", data: { projects: [] } };
-    }
-
-    const results: { name: string; ok: boolean }[] = [];
-    const lines: string[] = [];
-    for (const project of projects) {
-      const name = project.Name as string;
-      const files = (project.ConfigFiles ?? "")
-        .split(",")
-        .map((f) => f.trim())
-        .filter(Boolean)
-        .map((f) => `-f ${shellQuote(f)}`)
-        .join(" ");
-      const base = `docker compose -p ${shellQuote(name)} ${files}`.trim();
-      const res = await execOnHost(host, `${base} pull && ${base} up -d`, CONTAINER_TIMEOUT_MS);
-      results.push({ name, ok: res.ok });
-      lines.push(`project ${name}: ${res.ok ? "ok" : "FAILED"}`);
-      if (!res.ok) lines.push(res.output);
-    }
-    lines.push("standalone containers untouched by design");
-
-    return {
-      ok: results.every((r) => r.ok),
-      output: lines.join("\n"),
-      data: { projects: results } satisfies ContainerUpdateData,
-    };
-  });
+    },
+  );
 }

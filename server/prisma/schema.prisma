@@ -198,6 +198,8 @@ model UpdateSchedule {
   timeOfDay        String // "HH:MM", server-local time
   osUpdates        Boolean  @default(true)
   containerUpdates Boolean  @default(false)
+  // Compose projects to update within the host scope ([] = all, M3.6)
+  containerProjects String  @default("[]")
   rebootAfterUpdate Boolean @default(false) // reboot hosts flagged reboot-pending when the update job ends
   verifyUpdates    Boolean  @default(true) // host.verify before/after updates (M3.3)
   enabled          Boolean  @default(true)
@@ -215,7 +217,8 @@ model UpdateSchedule {
 model Job {
   id         String    @id @default(cuid())
   trigger    String // scheduled | manual | auto (auto = reboot roll after an update job)
-  kind       String    @default("update") // update | reboot
+  kind       String    @default("update") // update | reboot | stack
+  project    String    @default("") // stack jobs: the compose project to update
   status     String    @default("running") // running | succeeded | failed
   scheduleId String?
   schedule   UpdateSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
@@ -223,7 +226,7 @@ model Job {
   finishedAt DateTime?
 
   steps JobStep[]
-  hosts Host[] // explicit scope for reboot jobs; update jobs use schedule.hosts
+  hosts Host[] // explicit scope for reboot/stack jobs; update jobs use schedule.hosts
 }
 
 // One step within a job, tied to the host it ran on. Output is the combined
