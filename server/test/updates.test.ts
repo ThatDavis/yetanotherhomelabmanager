@@ -218,11 +218,11 @@ test("host.verify passes when health and all services are reachable", async () =
   expect(res.data).toEqual({
     healthOk: true,
     services: [
-      { name: "web", port: 8080, ok: true },
-      { name: "db", port: 5432, ok: true },
+      { port: 5432, ok: true, names: ["db"], declared: true, discovered: false },
+      { port: 8080, ok: true, names: ["web"], declared: true, discovered: false },
     ],
   });
-  expect(res.output).toContain("service web:8080 ok");
+  expect(res.output).toContain("service db:5432 ok (declared)");
 });
 
 test("host.verify fails when a service port is unreachable", async () => {
@@ -231,6 +231,64 @@ test("host.verify fails when a service port is unreachable", async () => {
   const res = await hostVerify({ ...host, services: SERVICES });
   expect(res.ok).toBe(false);
   expect(res.output).toContain("service db:5432 UNREACHABLE");
+});
+
+test("host.verify merges declared services with discovered docker ports", async () => {
+  const inspect = JSON.stringify([
+    {
+      Name: "/shop-web-1",
+      Config: {
+        Labels: {
+          "com.docker.compose.project": "shop",
+          "com.docker.compose.service": "web",
+        },
+      },
+      NetworkSettings: {
+        Ports: {
+          "80/tcp": [{ HostIp: "0.0.0.0", HostPort: "8080" }], // dup of declared web
+          "9000/tcp": [{ HostIp: "", HostPort: "9000" }], // discovered only
+          "9100/tcp": [{ HostIp: "127.0.0.1", HostPort: "9100" }], // app can't reach
+        },
+      },
+    },
+  ]);
+  mockExec((command: string) =>
+    command.includes("docker inspect")
+      ? { ok: true, output: inspect, exitCode: 0 }
+      : { ok: true, output: "Linux 6.8 up", exitCode: 0 },
+  );
+  probeMock.mockResolvedValue(true);
+
+  const res = await hostVerify({ ...host, services: SERVICES });
+  expect(res.ok).toBe(true);
+  const data = res.data as VerifyData; // StepResult.data is unknown by contract
+  expect(data.services).toEqual([
+    { port: 5432, ok: true, names: ["db"], declared: true, discovered: false },
+    {
+      port: 8080,
+      ok: true,
+      names: ["shop/web", "web"],
+      declared: true,
+      discovered: true,
+    },
+    { port: 9000, ok: true, names: ["shop/web"], declared: false, discovered: true },
+  ]);
+  // 127.0.0.1-only publish never probed
+  expect(probeMock.mock.calls.map((c) => c[1])).toEqual([5432, 8080, 9000]);
+  expect(res.output).toContain("service shop/web:9000 ok (discovered)");
+});
+
+test("host.verify skips discovery quietly when docker is absent", async () => {
+  mockExec((command: string) =>
+    command.includes("docker")
+      ? { ok: false, output: "", exitCode: 1 }
+      : { ok: true, output: "Linux 6.8 up", exitCode: 0 },
+  );
+  probeMock.mockResolvedValue(true);
+  const res = await hostVerify({ ...host, services: SERVICES });
+  expect(res.ok).toBe(true);
+  const data = res.data as VerifyData;
+  expect(data.services.every((s) => s.declared && !s.discovered)).toBe(true);
 });
 
 test("host.verify fails on bad SSH health even with services up", async () => {

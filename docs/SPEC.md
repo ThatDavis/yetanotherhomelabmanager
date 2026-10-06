@@ -107,6 +107,7 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 **Acceptance Criteria:**
 - [x] Update schedules have a verify toggle (default on); update jobs run `host.verify` before and after updates on each scoped host
 - [x] Operators declare per-host services (name + port); `host.verify` TCP-connects each from the app and reports results per service
+- [x] Docker hosts are also covered automatically: published container ports are discovered via `docker inspect` (structured JSON) and verified alongside declared services; 127.0.0.1-only publishes are skipped
 - [x] Pre-check failure skips that host's updates (audited); other hosts continue
 - [x] Post-check failure excludes the host from the reboot roll and marks the job failed
 - [x] Services editable in the Guests host EDIT drawer (wholesale replace via hosts PATCH)
