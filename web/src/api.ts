@@ -44,6 +44,10 @@ export type SyncResult = {
   results: { node: string; ok: boolean; output: string }[];
 };
 
+export type HostRegisterResult = { host: Host; existing: boolean };
+
+export type AgentIpsData = { guests: { vmid: number; name: string; addresses: string[] }[] };
+
 export type AuditEntry = {
   id: string;
   at: string;

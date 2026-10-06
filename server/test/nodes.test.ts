@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import https from "node:https";
 import os from "node:os";
 import path from "node:path";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, afterEach, beforeAll, expect, test } from "vitest";
 import { buildServer } from "../src/app.js";
 import { prisma } from "../src/db.js";
 
@@ -49,6 +49,36 @@ async function startMock(certName: string): Promise<void> {
     if (req.url === "/api2/json/nodes") {
       if (denyPrivileges) res.writeHead(403).end(JSON.stringify({ errors: "perm" }));
       else res.writeHead(200).end(JSON.stringify({ data: [] }));
+      return;
+    }
+    // QEMU guest-agent fixtures for the agent-ips step (M3.5)
+    if (req.url === "/api2/json/nodes/mocknode/qemu/100/agent/network-get-interfaces") {
+      res.writeHead(200).end(
+        JSON.stringify({
+          data: {
+            result: [
+              {
+                name: "lo",
+                "ip-addresses": [
+                  { "ip-address": "127.0.0.1", "ip-address-type": "ipv4", prefix: 8 },
+                ],
+              },
+              {
+                name: "eth0",
+                "ip-addresses": [
+                  { "ip-address": "10.0.5.20", "ip-address-type": "ipv4", prefix: 24 },
+                  { "ip-address": "169.254.1.1", "ip-address-type": "ipv4", prefix: 16 },
+                  { "ip-address": "fe80::1", "ip-address-type": "ipv6", prefix: 64 },
+                ],
+              },
+            ],
+          },
+        }),
+      );
+      return;
+    }
+    if (req.url === "/api2/json/nodes/mocknode/qemu/200/agent/network-get-interfaces") {
+      res.writeHead(595).end(JSON.stringify({ errors: "agent not running" }));
       return;
     }
     res.writeHead(404).end("{}");
@@ -202,4 +232,85 @@ test("URL without a port gets the type default; explicit port is kept", async ()
     payload: { url: "https://pve-new.lab" },
   });
   expect(res.json().url).toBe("https://pve-new.lab:8006");
+});
+
+// --- SSH host onboarding (M3.5) ---
+
+const onboardedHostAliases: string[] = [];
+
+afterEach(async () => {
+  await prisma.host.deleteMany({ where: { alias: { in: onboardedHostAliases } } });
+  onboardedHostAliases.length = 0;
+});
+
+test("register-host creates a host from the node URL; second call is idempotent", async () => {
+  const id = await registerNode();
+  const node = await prisma.node.findUniqueOrThrow({ where: { id } });
+  onboardedHostAliases.push(node.name);
+
+  const first = await app.inject({ method: "POST", url: `/api/nodes/${id}/register-host` });
+  expect(first.statusCode).toBe(201);
+  expect(first.json().existing).toBe(false);
+  expect(first.json().host.hostname).toBe("127.0.0.1");
+  expect(first.json().host.username).toBe("root");
+  expect(first.json().host.alias).toBe(node.name);
+
+  const second = await app.inject({ method: "POST", url: `/api/nodes/${id}/register-host` });
+  expect(second.json().existing).toBe(true);
+  expect(second.json().host.id).toBe(first.json().host.id);
+
+  const auditRow = await prisma.auditEntry.findFirst({
+    where: { action: "node.host-register", target: node.name },
+  });
+  expect(auditRow?.ok).toBe(true);
+
+  const missing = await app.inject({ method: "POST", url: "/api/nodes/nope/register-host" });
+  expect(missing.statusCode).toBe(404);
+});
+
+test("agent-ips collects qemu guest addresses, skipping loopback and dead agents", async () => {
+  const id = await registerNode();
+  const node = await prisma.node.findUniqueOrThrow({ where: { id } });
+  await prisma.guest.createMany({
+    data: [
+      {
+        nodeDbId: id,
+        pveNode: "mocknode",
+        vmid: 100,
+        type: "qemu",
+        name: "web-vm",
+        status: "running",
+      },
+      {
+        nodeDbId: id,
+        pveNode: "mocknode",
+        vmid: 200,
+        type: "qemu",
+        name: "db-vm",
+        status: "running",
+      },
+      {
+        nodeDbId: id,
+        pveNode: "mocknode",
+        vmid: 300,
+        type: "lxc",
+        name: "lxc-1",
+        status: "running",
+      },
+    ],
+  });
+
+  const res = await app.inject({ method: "GET", url: `/api/nodes/${id}/agent-ips` });
+  expect(res.json().ok).toBe(true);
+  const guests = res.json().data.guests;
+  expect(guests).toEqual([{ vmid: 100, name: "web-vm", addresses: ["10.0.5.20"] }]);
+  expect(res.json().output).toContain("db-vm: agent not reachable");
+  expect(res.json().output).not.toContain("lxc-1"); // LXC never queried
+
+  const stepAudit = await prisma.auditEntry.findFirst({
+    where: { action: "guest.agent-ips", target: node.name },
+  });
+  expect(stepAudit?.ok).toBe(true);
+
+  await prisma.guest.deleteMany({ where: { nodeDbId: id } });
 });

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { audit } from "../audit.js";
 import { prisma } from "../db.js";
 import { storeSecret } from "../secrets.js";
-import { nodeSync, nodeTest } from "../steps.js";
+import { guestAgentIps, nodeSync, nodeTest } from "../steps.js";
 
 const createNodeSchema = z.object({
   name: z
@@ -136,6 +136,55 @@ export function nodeRoutes(app: FastifyInstance) {
     const node = await prisma.node.findUnique({ where: { id } });
     if (!node) return reply.code(404).send({ error: "node not found" });
     return nodeSync(node);
+  });
+
+  // One-click SSH host onboarding: the hostname comes from the node URL
+  // (already operator-verified at registration), so nothing needs typing.
+  // Idempotent — returns the existing host when this node is already
+  // registered. The bootstrap script still runs once on the host itself:
+  // Proxmox has no exec/file-write API to push the master key remotely.
+  app.post("/api/nodes/:id/register-host", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const node = await prisma.node.findUnique({ where: { id } });
+    if (!node) return reply.code(404).send({ error: "node not found" });
+    let hostname: string;
+    try {
+      hostname = new URL(node.url).hostname;
+    } catch {
+      await audit({
+        action: "node.host-register",
+        target: node.name,
+        ok: false,
+        output: `node URL is not parseable: ${node.url}`,
+      });
+      return reply.code(400).send({ error: "node URL is not parseable" });
+    }
+    const alias = node.name
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const existing = await prisma.host.findFirst({
+      where: { OR: [{ alias }, { hostname }] },
+    });
+    if (existing) return { host: existing, existing: true };
+    const host = await prisma.host.create({
+      data: { alias, hostname, username: "root", notes: `registered from node ${node.name}` },
+    });
+    await audit({
+      action: "node.host-register",
+      target: node.name,
+      params: { alias, hostname },
+      ok: true,
+    });
+    return reply.code(201).send({ host, existing: false });
+  });
+
+  // QEMU guest-agent IP discovery for SSH host onboarding (M3.5).
+  app.get("/api/nodes/:id/agent-ips", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const node = await prisma.node.findUnique({ where: { id } });
+    if (!node) return reply.code(404).send({ error: "node not found" });
+    return guestAgentIps(node);
   });
 
   // Sync all nodes; per-node failure isolation — one bad node can't blank the rest.
