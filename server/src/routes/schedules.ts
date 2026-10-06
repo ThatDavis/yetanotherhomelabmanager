@@ -15,6 +15,7 @@ const scheduleSchema = z.object({
   osUpdates: z.boolean().default(true),
   containerUpdates: z.boolean().default(false),
   rebootAfterUpdate: z.boolean().default(false),
+  verifyUpdates: z.boolean().default(true),
   enabled: z.boolean().default(true),
   hostIds: z.array(z.string()).default([]),
 });
@@ -28,6 +29,7 @@ const updateSchema = z.object({
   osUpdates: z.boolean().optional(),
   containerUpdates: z.boolean().optional(),
   rebootAfterUpdate: z.boolean().optional(),
+  verifyUpdates: z.boolean().optional(),
   enabled: z.boolean().optional(),
   hostIds: z.array(z.string()).optional(),
 });
@@ -86,6 +88,7 @@ export function scheduleRoutes(app: FastifyInstance) {
       osUpdates?: boolean;
       containerUpdates?: boolean;
       rebootAfterUpdate?: boolean;
+      verifyUpdates?: boolean;
       enabled?: boolean;
     } = {};
     if (parsed.data.name !== undefined) fields.name = parsed.data.name;
@@ -96,6 +99,7 @@ export function scheduleRoutes(app: FastifyInstance) {
       fields.containerUpdates = parsed.data.containerUpdates;
     if (parsed.data.rebootAfterUpdate !== undefined)
       fields.rebootAfterUpdate = parsed.data.rebootAfterUpdate;
+    if (parsed.data.verifyUpdates !== undefined) fields.verifyUpdates = parsed.data.verifyUpdates;
     if (parsed.data.enabled !== undefined) fields.enabled = parsed.data.enabled;
     const schedule = await prisma.updateSchedule.update({
       where: { id },

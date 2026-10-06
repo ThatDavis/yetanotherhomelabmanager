@@ -25,6 +25,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 Goal: Scheduled updates with reboot orchestration, post-update verification, email reports.
 - [x] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
 - [x] M3.2: Reboot orchestration (Issue #22, branch feature/22-reboot-orchestration)
+- [ ] M3.3: Post-update verification (Issue #24, branch feature/24-post-update-verification)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -33,6 +34,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ## [DECISIONS]
 
+- 2026-10-04: Deep-plan validated M3.3 post-update verification. Key decisions: per-schedule verifyUpdates toggle (default ON); host.verify step = SSH health.check + TCP-connect of operator-declared HostService ports FROM THE APP (no nc/bash dependency on hosts); pre-check failure skips that host's updates (audited); post-check failure excludes the host from the M3.2 reboot roll and fails the job; services edited in Guests EDIT drawer, wholesale-replaced via hosts PATCH.
 - 2026-10-01: Deep-plan validated M3.2 reboot orchestration. Key decisions: rolling reboots in Host.bootOrder sequence (boring strict order instead of a DAG — covers "X must come up first"); recovery gate = SSH reachable + health.check within 10 min before next host; abort roll on non-recovery, never re-touch rebooted hosts; UpdateSchedule.rebootAfterUpdate toggle drives auto-reboot after update jobs; manual per-host reboot via pre-flight-confirmed API; self host never auto-reboots (audited skip) and manual reboot refused (would kill the orchestrator). All work rides the M3.1 job engine.
 - 2026-10-01: Deep-plan validated M3.1 update scheduling. Key decisions: PVE/PBS host OS updated via SSH (Proxmox API has no apt endpoint) — operator registers nodes as Hosts, no SSH fields on Node model; containers-in-guests included in M3.1 scope (docker compose projects only, standalone untouched); job engine (Job/JobStep + in-process runner + SSE/poll) is the core new primitive; schedules are weekly day(s)+time with OS/container toggles; per-host failure isolation + reboot-pending surfaced (reboot is M3.2); self-host open question resolved by `self` flag on Host.
 
@@ -145,6 +147,13 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ UI: schedule toggle, Guests bootOrder + REBOOT typed-confirm, job center reboot steps |
 |  |    ✓ Built: Host.bootOrder + UpdateSchedule.rebootAfterUpdate + Job.kind/_HostToJob (+JobStep.finishedAt/ok default for running rows); host.reboot step (send + 10-min recovery poll via health.check); rolling rolls low→high bootOrder with abort-on-non-recovery; self host auto-skip (audited) + manual refusal (409); Guests EDIT drawer (notes/self/bootOrder) + typed-confirm REBOOT modal; browser-verified incl. live running-step rows (server 83/83, web 12/12) |
 | 2026-10-04 | Completed feature: Reboot orchestration (M3.2, PR #23). DoD all PASS (1 WARN: no web component tests, matches convention); browser-verified; real recovery cycle pending on homelab. Note: dev DB is podman container yahlm-pg — start it before tests. |
+| 2026-10-04 | Started feature: Post-update verification (M3.3, Issue #24) on branch feature/24-post-update-verification. Deep-plan validated: verifyUpdates default ON, app-side TCP service probes, pre-check skip + post-check reboot gate. |
+|  |    ✓ Schema: UpdateSchedule.verifyUpdates (default true), HostService model, migration |
+|  |    ✓ host.verify step (SSH health.check + TCP service probes from app), mocked tests |
+|  |    ✓ jobs.ts wiring: pre-check skip, post-check reboot gate + job failure |
+|  |    ✓ API: schedule toggle, hosts GET services, PATCH wholesale replace |
+|  |    ✓ UI: verify toggle, services editor in Guests EDIT drawer |
+|  |    ✓ Built: UpdateSchedule.verifyUpdates (default ON) + HostService model + JobStep.phase; serviceprobe.ts (app-side TCP, Promise.withResolvers); host.verify step; pre-check skip (audited host.update.skip, job stays ok) + post-check gate (fails job, excludes host from roll); hosts PATCH wholesale service replace; Guests services editor + Jobs phase badges; browser-verified live pre-check skip (server 91/91, web 12/12) |
 
 ## [DISCOVERIES]
 

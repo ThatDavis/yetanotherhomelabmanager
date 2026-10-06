@@ -7,6 +7,7 @@ export type Host = {
   notes: string;
   self: boolean;
   bootOrder: number;
+  services: { id: string; name: string; port: number }[];
   createdAt: string;
 };
 
@@ -97,6 +98,7 @@ export type UpdateSchedule = {
   osUpdates: boolean;
   containerUpdates: boolean;
   rebootAfterUpdate: boolean;
+  verifyUpdates: boolean;
   enabled: boolean;
   lastRunAt: string | null;
   hosts: { id: string; alias: string; hostname: string; self: boolean }[];
@@ -106,6 +108,7 @@ export type UpdateSchedule = {
 export type JobStep = {
   id: string;
   name: string; // dotted step name
+  phase: string; // pre | post for host.verify; "" otherwise
   ok: boolean;
   output: string;
   rebootPending: boolean;

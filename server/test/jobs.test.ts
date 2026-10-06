@@ -23,7 +23,14 @@ const app = buildServer({ spaDir: "/nonexistent", auth: false });
 
 let hostId = "";
 
-async function makeSchedule(overrides: { osUpdates?: boolean; containerUpdates?: boolean } = {}) {
+async function makeSchedule(
+  overrides: {
+    osUpdates?: boolean;
+    containerUpdates?: boolean;
+    rebootAfterUpdate?: boolean;
+    verifyUpdates?: boolean;
+  } = {},
+) {
   const schedule = await prisma.updateSchedule.create({
     data: {
       name: `test-job-${Date.now()}`,
@@ -31,6 +38,8 @@ async function makeSchedule(overrides: { osUpdates?: boolean; containerUpdates?:
       timeOfDay: "03:00",
       osUpdates: overrides.osUpdates ?? true,
       containerUpdates: overrides.containerUpdates ?? true,
+      rebootAfterUpdate: overrides.rebootAfterUpdate ?? false,
+      verifyUpdates: overrides.verifyUpdates ?? false,
       hosts: { connect: { id: hostId } },
     },
   });
@@ -101,6 +110,7 @@ test("one host failing does not stop the job; job reports failed", async () => {
       timeOfDay: "03:00",
       osUpdates: true,
       containerUpdates: false,
+      verifyUpdates: false,
       hosts: { connect: [{ id: good.id }, { id: bad.id }] },
     },
   });
@@ -272,6 +282,7 @@ test("update job with rebootAfterUpdate rolls only pending hosts; self host skip
       osUpdates: true,
       containerUpdates: false,
       rebootAfterUpdate: true,
+      verifyUpdates: false,
       hosts: { connect: [{ id: plain.id }, { id: pending.id }, { id: selfHost.id }] },
     },
   });
@@ -332,4 +343,103 @@ test("manual reboot API enqueues a reboot job", async () => {
     where: { action: "host.reboot", target: host.alias, ok: true },
   });
   expect(audited).not.toBeNull();
+});
+
+// --- Post-update verification (M3.3) ---
+
+const HEALTH_CMD = "uname -srm; uptime; df -h /; free -m";
+
+async function makeVerifySchedule(hostIds: string[], extra: { rebootAfterUpdate?: boolean } = {}) {
+  return prisma.updateSchedule.create({
+    data: {
+      name: `test-job-${Date.now()}`,
+      daysOfWeek: [1],
+      timeOfDay: "03:00",
+      osUpdates: true,
+      containerUpdates: false,
+      verifyUpdates: true,
+      rebootAfterUpdate: extra.rebootAfterUpdate ?? false,
+      hosts: { connect: hostIds.map((id) => ({ id })) },
+    },
+  });
+}
+
+test("verify toggle runs host.verify pre and post around updates", async () => {
+  const host = await makeRebootHost(`test-jobhost-verify-${Date.now()}`, 0);
+  mockAllOk();
+
+  const schedule = await makeVerifySchedule([host.id]);
+  const jobId = await enqueueUpdateJob(schedule.id, "manual");
+  await drainQueue();
+
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: jobId },
+    include: { steps: { orderBy: { startedAt: "asc" } } },
+  });
+  expect(job.status).toBe("succeeded");
+  expect(job.steps.map((s) => [s.name, s.phase])).toEqual([
+    ["host.verify", "pre"],
+    ["os.update", ""],
+    ["host.verify", "post"],
+  ]);
+});
+
+test("failed pre-check skips the host's updates and is audited", async () => {
+  const host = await makeRebootHost(`test-jobhost-preskip-${Date.now()}`, 0);
+  // Health probe fails; everything else (incl. the apt probe) succeeds —
+  // proving the update step never ran is the point.
+  execMock.mockImplementation(async (_h, command: string) => {
+    if (command === HEALTH_CMD) return { ok: false, output: "! down", exitCode: null, lines: [] };
+    return { ok: true, output: "ok", exitCode: 0, lines: [] };
+  });
+
+  const schedule = await makeVerifySchedule([host.id]);
+  const jobId = await enqueueUpdateJob(schedule.id, "manual");
+  await drainQueue();
+
+  const job = await prisma.job.findUniqueOrThrow({
+    where: { id: jobId },
+    include: { steps: { orderBy: { startedAt: "asc" } } },
+  });
+  expect(job.status).toBe("succeeded"); // a protective skip is not a failure
+  expect(job.steps.map((s) => [s.name, s.phase, s.ok])).toEqual([["host.verify", "pre", false]]);
+
+  const skip = await prisma.auditEntry.findFirst({
+    where: { action: "host.update.skip", target: host.alias },
+  });
+  expect(skip?.ok).toBe(true);
+});
+
+test("failed post-check fails the job and gates the reboot roll", async () => {
+  const host = await makeRebootHost(`test-jobhost-postgate-${Date.now()}`, 0);
+  // Pre-verify passes, post-verify fails: health probe OK on first call, down after.
+  let healthCalls = 0;
+  execMock.mockImplementation(async (_h, command: string) => {
+    if (command === HEALTH_CMD) {
+      healthCalls += 1;
+      return healthCalls === 1
+        ? { ok: true, output: "up", exitCode: 0, lines: [] }
+        : { ok: false, output: "! down after update", exitCode: null, lines: [] };
+    }
+    if (command.startsWith("for c in apt-get")) {
+      return { ok: true, output: "/usr/bin/apt-get", exitCode: 0, lines: [] };
+    }
+    if (command.startsWith("if [ -f /var/run/reboot-required")) {
+      return { ok: true, output: "", exitCode: 0, lines: [] }; // reboot pending
+    }
+    return { ok: true, output: "ok", exitCode: 0, lines: [] };
+  });
+  rebootMock.mockResolvedValue(REBOOT_OK);
+
+  const schedule = await makeVerifySchedule([host.id], { rebootAfterUpdate: true });
+  const jobId = await enqueueUpdateJob(schedule.id, "manual");
+  await drainQueue();
+
+  const job = await prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+  expect(job.status).toBe("failed");
+
+  // No reboot job was created — the sick host never enters the roll.
+  const jobs = await prisma.job.findMany({ where: { schedule: { name: schedule.name } } });
+  expect(jobs).toHaveLength(1);
+  expect(rebootMock).not.toHaveBeenCalled();
 });

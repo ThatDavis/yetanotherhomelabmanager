@@ -1,5 +1,6 @@
-import type { Host } from "@prisma/client";
+import type { Host, HostService } from "@prisma/client";
 import { execOnHost } from "./executor.js";
+import { probeServicePort } from "./serviceprobe.js";
 import { HEALTH_CHECK_CMD, runStep, type StepResult } from "./steps.js";
 
 // Update steps (M3.1). os.update auto-detects the package manager (apt/dnf/yum);
@@ -100,6 +101,120 @@ function parseComposeProjects(output: string): ComposeProject[] | null {
 
 function shellQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+// --- host.verify (M3.3) ---
+
+export type VerifyData = {
+  healthOk: boolean;
+  services: {
+    port: number;
+    ok: boolean;
+    names: string[];
+    declared: boolean;
+    discovered: boolean;
+  }[];
+};
+
+type DockerInspectEntry = {
+  Name?: string;
+  Config?: { Labels?: Record<string, string> };
+  NetworkSettings?: { Ports?: Record<string, { HostIp?: string; HostPort?: string }[] | null> };
+};
+
+// Published host ports from `docker inspect` output (structured JSON, so we
+// never parse docker's human table). Entries are labeled project/service when
+// compose labels are present, else the container name. Only bindings reachable
+// off-host are checked — 127.0.0.1-only publishes are invisible to the app.
+function extractPublishedPorts(output: string): { name: string; port: number }[] {
+  try {
+    const parsed: unknown = JSON.parse(output);
+    if (!Array.isArray(parsed)) return [];
+    const containers = parsed as DockerInspectEntry[]; // docker inspect emits this array shape
+    const found: { name: string; port: number }[] = [];
+    for (const c of containers) {
+      const labels = c.Config?.Labels ?? {};
+      const name =
+        labels["com.docker.compose.project"] && labels["com.docker.compose.service"]
+          ? `${labels["com.docker.compose.project"]}/${labels["com.docker.compose.service"]}`
+          : (c.Name ?? "?").replace(/^\//, "");
+      const ports = c.NetworkSettings?.Ports ?? {};
+      for (const bindings of Object.values(ports)) {
+        for (const b of bindings ?? []) {
+          if (!b.HostPort) continue;
+          if (b.HostIp && b.HostIp !== "0.0.0.0" && b.HostIp !== "::") continue;
+          found.push({ name, port: Number(b.HostPort) });
+        }
+      }
+    }
+    return found;
+  } catch {
+    return [];
+  }
+}
+
+// Discover published container ports; no-ops quietly when docker is absent or
+// no containers run (nonzero exit, empty output).
+const DISCOVERY_CMD =
+  'command -v docker >/dev/null 2>&1 && ids=$(docker ps -q) && [ -n "$ids" ] && docker inspect $ids';
+
+// host.verify — the SSH health probe plus TCP connects from the app to every
+// service port: operator-declared services (non-docker coverage) merged with
+// docker-published ports discovered at runtime. Runs before and after
+// updates; the runner skips a host with a failed pre-check and keeps failed
+// post-checks out of the reboot roll.
+export function hostVerify(host: Host & { services: HostService[] }): Promise<StepResult> {
+  return runStep(
+    "host.verify",
+    host.alias,
+    { services: host.services.map((s) => s.name) },
+    async () => {
+      const health = await execOnHost(host, HEALTH_CHECK_CMD);
+      const lines: string[] = [
+        health.ok ? "ssh health: ok" : `ssh health: FAILED\n${health.output}`,
+      ];
+
+      const entries: { port: number; name: string; source: "declared" | "discovered" }[] = [
+        ...host.services.map((s) => ({ port: s.port, name: s.name, source: "declared" as const })),
+      ];
+      const dres = await execOnHost(host, DISCOVERY_CMD, 30_000);
+      if (dres.ok && dres.output.trim()) {
+        for (const d of extractPublishedPorts(dres.output)) {
+          entries.push({ port: d.port, name: d.name, source: "discovered" });
+        }
+      }
+      const byPort = new Map<
+        number,
+        { names: Set<string>; declared: boolean; discovered: boolean }
+      >();
+      for (const e of entries) {
+        const slot = byPort.get(e.port) ?? { names: new Set(), declared: false, discovered: false };
+        slot.names.add(e.name);
+        slot[e.source] = true;
+        byPort.set(e.port, slot);
+      }
+
+      const services: VerifyData["services"] = [];
+      for (const [port, e] of [...byPort.entries()].sort((a, b) => a[0] - b[0])) {
+        const ok = await probeServicePort(host.hostname, port);
+        const source = [e.declared ? "declared" : null, e.discovered ? "discovered" : null]
+          .filter(Boolean)
+          .join("+");
+        lines.push(
+          `service ${[...e.names].sort().join("/")}:${port} ${ok ? "ok" : "UNREACHABLE"} (${source})`,
+        );
+        services.push({
+          port,
+          ok,
+          names: [...e.names].sort(),
+          declared: e.declared,
+          discovered: e.discovered,
+        });
+      }
+      const ok = health.ok && services.every((s) => s.ok);
+      return { ok, output: lines.join("\n"), data: { healthOk: health.ok, services } };
+    },
+  );
 }
 
 // --- host.reboot (M3.2) ---

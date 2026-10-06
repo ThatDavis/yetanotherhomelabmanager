@@ -1,7 +1,8 @@
-import type { Host } from "@prisma/client";
+import type { Host, JobStep } from "@prisma/client";
 import { audit } from "./audit.js";
 import { prisma } from "./db.js";
-import { containerUpdate, hostReboot, type OsUpdateData, osUpdate } from "./updates.js";
+import type { StepResult } from "./steps.js";
+import { containerUpdate, hostReboot, hostVerify, type OsUpdateData, osUpdate } from "./updates.js";
 
 // Job runner (M3.1). One job runs at a time (rolling updates); a manual run
 // while another job is active waits in the queue. State lives in the DB —
@@ -69,8 +70,8 @@ async function runJob(jobId: string): Promise<void> {
   const job = await prisma.job.findUniqueOrThrow({
     where: { id: jobId },
     include: {
-      schedule: { include: { hosts: { orderBy: { alias: "asc" } } } },
-      hosts: true,
+      schedule: { include: { hosts: { include: { services: true }, orderBy: { alias: "asc" } } } },
+      hosts: { include: { services: true } },
     },
   });
   if (job.kind === "reboot") {
@@ -86,29 +87,42 @@ async function runJob(jobId: string): Promise<void> {
   emit(jobId, "status", { status: "running" });
   let allOk = true;
   const pendingReboot = new Set<string>();
+  const verifyFailed = new Set<string>();
   const steps = PLANNED_STEPS.filter((s) => schedule[s.toggle]);
   for (const host of schedule.hosts) {
+    // Pre-check: a host that doesn't verify before updating is skipped
+    // entirely (audited) — updates never run on a sick host.
+    if (schedule.verifyUpdates) {
+      const pre = await hostVerify(host);
+      await recordStep(jobId, host.id, "host.verify", "pre", pre);
+      if (!pre.ok) {
+        await audit({
+          action: "host.update.skip",
+          target: host.alias,
+          ok: true,
+          output: "pre-update verification failed; updates skipped",
+        });
+        continue;
+      }
+    }
+
     for (const step of steps) {
-      emit(jobId, "step-start", { host: host.alias, name: step.name });
-      const stepRow = await prisma.jobStep.create({
-        data: { jobId, hostId: host.id, name: step.name },
-      });
-      emit(jobId, "step", stepRow);
       const result = await step.fn(host);
       const rebootPending = (result.data as OsUpdateData | undefined)?.rebootPending ?? false;
       if (rebootPending) pendingReboot.add(host.id);
-      const done = await prisma.jobStep.update({
-        where: { id: stepRow.id },
-        data: {
-          ok: result.ok,
-          output: result.output,
-          rebootPending,
-          durationMs: result.durationMs,
-          finishedAt: new Date(),
-        },
-      });
-      emit(jobId, "step", done);
+      await recordStep(jobId, host.id, step.name, "", result, { rebootPending });
       if (!result.ok) allOk = false; // per-host isolation: keep going
+    }
+
+    // Post-check failure marks the job failed and keeps the host out of the
+    // reboot roll — never bounce a host that looks sick after updating.
+    if (schedule.verifyUpdates) {
+      const post = await hostVerify(host);
+      await recordStep(jobId, host.id, "host.verify", "post", post);
+      if (!post.ok) {
+        allOk = false;
+        verifyFailed.add(host.id);
+      }
     }
   }
 
@@ -128,8 +142,36 @@ async function runJob(jobId: string): Promise<void> {
 
   // Opt-in reboot roll: reboot hosts the updates flagged, in boot order.
   if (schedule.rebootAfterUpdate) {
+    for (const id of verifyFailed) pendingReboot.delete(id);
     await scheduleRebootRoll(job, schedule.id, schedule.hosts, pendingReboot);
   }
+}
+
+// Persist a step as a running row, then complete it in place — the job
+// center shows in-progress steps instead of an empty "waiting" state.
+async function recordStep(
+  jobId: string,
+  hostId: string,
+  name: string,
+  phase: string,
+  result: StepResult,
+  extra: { rebootPending?: boolean } = {},
+): Promise<JobStep> {
+  emit(jobId, "step-start", { hostId, name, phase });
+  const row = await prisma.jobStep.create({ data: { jobId, hostId, name, phase } });
+  emit(jobId, "step", row);
+  const done = await prisma.jobStep.update({
+    where: { id: row.id },
+    data: {
+      ok: result.ok,
+      output: result.output,
+      rebootPending: extra.rebootPending ?? false,
+      durationMs: result.durationMs,
+      finishedAt: new Date(),
+    },
+  });
+  emit(jobId, "step", done);
+  return done;
 }
 
 // Self hosts are never auto-rebooted (the orchestrator would kill itself);
@@ -168,23 +210,9 @@ async function runRebootRoll(jobId: string, hosts: Host[]): Promise<void> {
   );
   emit(jobId, "status", { status: "running" });
   for (const host of ordered) {
-    emit(jobId, "step-start", { host: host.alias, name: "host.reboot" });
-    const stepRow = await prisma.jobStep.create({
-      data: { jobId, hostId: host.id, name: "host.reboot" },
-    });
-    emit(jobId, "step", stepRow);
     const result = await hostReboot(host);
-    const done = await prisma.jobStep.update({
-      where: { id: stepRow.id },
-      data: {
-        ok: result.ok,
-        output: result.output,
-        durationMs: result.durationMs,
-        finishedAt: new Date(),
-      },
-    });
-    emit(jobId, "step", done);
-    if (!result.ok) {
+    const done = await recordStep(jobId, host.id, "host.reboot", "", result);
+    if (!done.ok) {
       const remaining = ordered.length - ordered.indexOf(host) - 1;
       await finishJob(
         jobId,

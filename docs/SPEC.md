@@ -102,6 +102,18 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 - [x] Every reboot and recovery probe audited via the step contract; job center shows reboot steps with live status
 - [x] Tests green (steps via mocked executor, ordering, abort-on-failed-recovery, self-host guards)
 
+#### Feature: Post-update verification (M3.3)
+**Description:** Update jobs verify each scoped host before and after updating: a `host.verify` step runs the fixed SSH health probe plus operator-declared service checks (TCP connect from the app to each declared port, so no distro-specific tooling is needed on hosts). A host failing the pre-check is skipped for updates; a host failing the post-check is excluded from the reboot roll and marks the job failed. Verification is a per-schedule toggle, default on.
+**Acceptance Criteria:**
+- [x] Update schedules have a verify toggle (default on); update jobs run `host.verify` before and after updates on each scoped host
+- [x] Operators declare per-host services (name + port); `host.verify` TCP-connects each from the app and reports results per service
+- [x] Docker hosts are also covered automatically: published container ports are discovered via `docker inspect` (structured JSON) and verified alongside declared services; 127.0.0.1-only publishes are skipped
+- [x] Pre-check failure skips that host's updates (audited); other hosts continue
+- [x] Post-check failure excludes the host from the reboot roll and marks the job failed
+- [x] Services editable in the Guests host EDIT drawer (wholesale replace via hosts PATCH)
+- [x] Every verification is audited via the step contract; results visible as job steps
+- [x] Tests green (verify step via mocked executor/socket, pre-check skip, post-check reboot gate)
+
 ---
 
 ## Future Milestones

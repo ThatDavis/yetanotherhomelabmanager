@@ -3,13 +3,25 @@ import type { Host } from "@prisma/client";
 import { afterEach, expect, test, vi } from "vitest";
 import { prisma } from "../src/db.js";
 import { execOnHost } from "../src/executor.js";
-import { containerUpdate, hostReboot, osUpdate } from "../src/updates.js";
+import { probeServicePort } from "../src/serviceprobe.js";
+import {
+  containerUpdate,
+  hostReboot,
+  hostVerify,
+  osUpdate,
+  type VerifyData,
+} from "../src/updates.js";
 
 vi.mock("../src/executor.js", () => ({
   execOnHost: vi.fn(),
 }));
 
+vi.mock("../src/serviceprobe.js", () => ({
+  probeServicePort: vi.fn(),
+}));
+
 const execMock = vi.mocked(execOnHost);
+const probeMock = vi.mocked(probeServicePort);
 
 const host: Host = {
   id: "h1",
@@ -54,6 +66,7 @@ function osHandler(
 
 afterEach(async () => {
   execMock.mockReset();
+  probeMock.mockReset();
   await prisma.auditEntry.deleteMany({ where: { target: { startsWith: "test-updates-" } } });
 });
 
@@ -188,6 +201,113 @@ test("container.update fails on non-JSON compose ls output", async () => {
   const res = await containerUpdate(host);
   expect(res.ok).toBe(false);
   expect(res.output).toContain("not JSON");
+});
+
+// --- host.verify (M3.3) ---
+
+const SERVICES = [
+  { id: "s1", hostId: "h1", name: "web", port: 8080 },
+  { id: "s2", hostId: "h1", name: "db", port: 5432 },
+];
+
+test("host.verify passes when health and all services are reachable", async () => {
+  mockExec(() => ({ ok: true, output: "Linux 6.8 up", exitCode: 0 }));
+  probeMock.mockResolvedValue(true);
+  const res = await hostVerify({ ...host, services: SERVICES });
+  expect(res.ok).toBe(true);
+  expect(res.data).toEqual({
+    healthOk: true,
+    services: [
+      { port: 5432, ok: true, names: ["db"], declared: true, discovered: false },
+      { port: 8080, ok: true, names: ["web"], declared: true, discovered: false },
+    ],
+  });
+  expect(res.output).toContain("service db:5432 ok (declared)");
+});
+
+test("host.verify fails when a service port is unreachable", async () => {
+  mockExec(() => ({ ok: true, output: "Linux 6.8 up", exitCode: 0 }));
+  probeMock.mockImplementation(async (_h, port) => port !== 5432);
+  const res = await hostVerify({ ...host, services: SERVICES });
+  expect(res.ok).toBe(false);
+  expect(res.output).toContain("service db:5432 UNREACHABLE");
+});
+
+test("host.verify merges declared services with discovered docker ports", async () => {
+  const inspect = JSON.stringify([
+    {
+      Name: "/shop-web-1",
+      Config: {
+        Labels: {
+          "com.docker.compose.project": "shop",
+          "com.docker.compose.service": "web",
+        },
+      },
+      NetworkSettings: {
+        Ports: {
+          "80/tcp": [{ HostIp: "0.0.0.0", HostPort: "8080" }], // dup of declared web
+          "9000/tcp": [{ HostIp: "", HostPort: "9000" }], // discovered only
+          "9100/tcp": [{ HostIp: "127.0.0.1", HostPort: "9100" }], // app can't reach
+        },
+      },
+    },
+  ]);
+  mockExec((command: string) =>
+    command.includes("docker inspect")
+      ? { ok: true, output: inspect, exitCode: 0 }
+      : { ok: true, output: "Linux 6.8 up", exitCode: 0 },
+  );
+  probeMock.mockResolvedValue(true);
+
+  const res = await hostVerify({ ...host, services: SERVICES });
+  expect(res.ok).toBe(true);
+  const data = res.data as VerifyData; // StepResult.data is unknown by contract
+  expect(data.services).toEqual([
+    { port: 5432, ok: true, names: ["db"], declared: true, discovered: false },
+    {
+      port: 8080,
+      ok: true,
+      names: ["shop/web", "web"],
+      declared: true,
+      discovered: true,
+    },
+    { port: 9000, ok: true, names: ["shop/web"], declared: false, discovered: true },
+  ]);
+  // 127.0.0.1-only publish never probed
+  expect(probeMock.mock.calls.map((c) => c[1])).toEqual([5432, 8080, 9000]);
+  expect(res.output).toContain("service shop/web:9000 ok (discovered)");
+});
+
+test("host.verify skips discovery quietly when docker is absent", async () => {
+  mockExec((command: string) =>
+    command.includes("docker")
+      ? { ok: false, output: "", exitCode: 1 }
+      : { ok: true, output: "Linux 6.8 up", exitCode: 0 },
+  );
+  probeMock.mockResolvedValue(true);
+  const res = await hostVerify({ ...host, services: SERVICES });
+  expect(res.ok).toBe(true);
+  const data = res.data as VerifyData;
+  expect(data.services.every((s) => s.declared && !s.discovered)).toBe(true);
+});
+
+test("host.verify fails on bad SSH health even with services up", async () => {
+  mockExec(() => ({ ok: false, output: "! connection refused", exitCode: null }));
+  probeMock.mockResolvedValue(true);
+  const res = await hostVerify({ ...host, services: SERVICES });
+  expect(res.ok).toBe(false);
+  const data = res.data as VerifyData; // StepResult.data is unknown by contract
+  expect(data.healthOk).toBe(false);
+});
+
+test("host.verify is audited", async () => {
+  mockExec(() => ({ ok: true, output: "up", exitCode: 0 }));
+  probeMock.mockResolvedValue(true);
+  await hostVerify({ ...host, services: [] });
+  const row = await prisma.auditEntry.findFirst({
+    where: { action: "host.verify", target: host.alias },
+  });
+  expect(row?.ok).toBe(true);
 });
 
 // --- host.reboot (M3.2) ---

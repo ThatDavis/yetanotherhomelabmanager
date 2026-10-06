@@ -317,6 +317,7 @@ function EditHostDrawer({
   const [notes, setNotes] = useState("");
   const [self, setSelf] = useState(false);
   const [bootOrder, setBootOrder] = useState("0");
+  const [services, setServices] = useState<{ name: string; port: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -324,6 +325,7 @@ function EditHostDrawer({
       setNotes(host.notes);
       setSelf(host.self);
       setBootOrder(String(host.bootOrder));
+      setServices(host.services.map((s) => ({ name: s.name, port: String(s.port) })));
       setError(null);
     }
   }, [open, host]);
@@ -334,7 +336,14 @@ function EditHostDrawer({
     try {
       await api(`/hosts/${host?.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ notes, self, bootOrder: Number(bootOrder) }),
+        body: JSON.stringify({
+          notes,
+          self,
+          bootOrder: Number(bootOrder),
+          services: services
+            .filter((s) => s.name.trim() !== "")
+            .map((s) => ({ name: s.name.trim(), port: Number(s.port) })),
+        }),
       });
       onSaved();
     } catch (err) {
@@ -376,6 +385,54 @@ function EditHostDrawer({
             THIS HOST RUNS THE APP (reboot refused; auto-reboots skip it)
           </span>
         </label>
+
+        <div>
+          <span className="micro-label">SERVICES (TCP-checked by host.verify)</span>
+          <div className="mt-1 flex flex-col gap-2">
+            {services.map((s, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: editable form rows are positional, rows have no stable id
+              <div key={i} className="flex gap-2">
+                <input
+                  className={`${inputCls} flex-1`}
+                  value={s.name}
+                  placeholder="name"
+                  onChange={(e) =>
+                    setServices(
+                      services.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)),
+                    )
+                  }
+                />
+                <input
+                  className={`${inputCls} w-24`}
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={s.port}
+                  placeholder="port"
+                  onChange={(e) =>
+                    setServices(
+                      services.map((x, j) => (j === i ? { ...x, port: e.target.value } : x)),
+                    )
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setServices(services.filter((_, j) => j !== i))}
+                  className="px-2 font-mono text-status-error/70 hover:text-status-error"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setServices([...services, { name: "", port: "" }])}
+              className="border border-surface1 px-3 py-1 font-mono text-xs text-subtext0 hover:text-text"
+            >
+              + ADD SERVICE
+            </button>
+          </div>
+        </div>
         {error && <p className="font-mono text-sm text-status-error">{error}</p>}
         <button
           type="submit"

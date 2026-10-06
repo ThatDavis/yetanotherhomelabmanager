@@ -102,6 +102,7 @@ export function Updates() {
                   {[
                     s.osUpdates ? "os" : null,
                     s.containerUpdates ? "containers" : null,
+                    s.verifyUpdates ? "verify" : null,
                     s.rebootAfterUpdate ? "reboot" : null,
                   ]
                     .filter(Boolean)
@@ -262,6 +263,7 @@ function ScheduleFormDrawer({
   const [osUpdates, setOsUpdates] = useState(true);
   const [containerUpdates, setContainerUpdates] = useState(false);
   const [rebootAfterUpdate, setRebootAfterUpdate] = useState(false);
+  const [verifyUpdates, setVerifyUpdates] = useState(true);
   const [enabled, setEnabled] = useState(true);
   const [hostIds, setHostIds] = useState<string[]>([]);
   const [allHosts, setAllHosts] = useState<Host[]>([]);
@@ -275,6 +277,7 @@ function ScheduleFormDrawer({
       setOsUpdates(schedule?.osUpdates ?? true);
       setContainerUpdates(schedule?.containerUpdates ?? false);
       setRebootAfterUpdate(schedule?.rebootAfterUpdate ?? false);
+      setVerifyUpdates(schedule?.verifyUpdates ?? true);
       setEnabled(schedule?.enabled ?? true);
       setHostIds(schedule?.hosts.map((h) => h.id) ?? []);
       setError(null);
@@ -298,6 +301,7 @@ function ScheduleFormDrawer({
         osUpdates,
         containerUpdates,
         rebootAfterUpdate,
+        verifyUpdates,
         enabled,
         hostIds,
       };
@@ -380,6 +384,17 @@ function ScheduleFormDrawer({
             />
             <span className="font-mono text-xs text-subtext1">
               CONTAINER UPDATES (docker compose projects)
+            </span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={verifyUpdates}
+              onChange={(e) => setVerifyUpdates(e.target.checked)}
+              className="accent-[var(--color-accent)]"
+            />
+            <span className="font-mono text-xs text-subtext1">
+              VERIFY BEFORE/AFTER (health + declared services; failures gate reboots)
             </span>
           </label>
           <label className="flex items-center gap-2">
