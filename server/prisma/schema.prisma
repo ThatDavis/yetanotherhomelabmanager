@@ -17,6 +17,8 @@ model Host {
   notes     String   @default("")
   self      Boolean  @default(false) // true if this host runs the app (reboot refused, M3.2)
   bootOrder Int      @default(0) // reboot rolls go low→high (dependency ordering)
+  osUpdatesPending Int       @default(-1) // -1 unknown; from os.check (M3.6)
+  osCheckedAt      DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -24,6 +26,7 @@ model Host {
   jobSteps  JobStep[]
   jobs      Job[]
   services  HostService[]
+  stacks    ComposeStack[]
 }
 
 // A TCP service the operator expects reachable on a host. host.verify
@@ -36,6 +39,23 @@ model HostService {
   port   Int
 
   @@index([hostId])
+}
+
+// A docker compose project discovered on a host by stacks.scan (M3.6).
+// services is a JSON array: [{ name, image, tag, digest, version (OCI
+// label), latest (best-effort), updatable, registryCheckedAt }].
+model ComposeStack {
+  id          String   @id @default(cuid())
+  hostId      String
+  host        Host     @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  project     String
+  configFiles String   @default("")
+  services    String   @default("[]")
+  drift       Boolean  @default(false) // containers diverge from the compose project
+  scannedAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([hostId, project])
 }
 
 // Append-only audit trail. One row per step execution or mutating API action.
