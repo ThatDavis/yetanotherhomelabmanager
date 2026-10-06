@@ -114,6 +114,26 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 - [x] Every verification is audited via the step contract; results visible as job steps
 - [x] Tests green (verify step via mocked executor/socket, pre-check skip, post-check reboot gate)
 
+#### Feature: Compose stack inventory + selective updates (M3.6)
+**Description:** YAHLM learns what compose stacks run on each host, what versions they are on, and whether updates are available — then lets the operator update stacks selectively instead of blind whole-host rolls. A nightly scan caches results so overview surfaces stay fast; registry queries run **on the host** via its own docker credentials (YAHLM stores no registry secrets). The Guests section is renamed **Infra** and gains a compose-stacks panel; the dashboard gains a services strip and a hosts-needing-updates card.
+**Acceptance Criteria:**
+- [ ] Nightly `stacks.scan` per docker host (reuses the scheduler): `docker compose ls` + `docker inspect` → per project: services, image tags, digests, OCI version labels, config files; cached in the DB
+- [ ] Update-available detection via on-host registry queries (`docker manifest inspect`/`buildx imagetools inspect`, host creds cover private registries); pinned tags additionally get current→latest version display via registry tag lists (Docker Hub/GHCR, app-side, cached, best-effort — failures degrade to "update available" without version numbers)
+- [ ] Nightly OS check on hosts in enabled schedule scopes (`apt list --upgradable` / `dnf check-update` over SSH), cached, feeding a hosts-needing-updates dashboard card
+- [ ] Compose-only inventory with a drift badge when running containers diverge from the compose project; standalone containers stay listed-but-untouched
+- [ ] Infra page (renamed from Guests) shows PVE guests, SSH hosts, and compose stacks (project, host, current, latest, age, badges); per-host CHECK NOW re-runs the scan on demand
+- [ ] Dashboard: services strip (stacks total / updates available / breaking-risk slot reserved for M3.7) + hosts-needing-updates card
+- [ ] `container.update` becomes stack-scoped: schedules pick stacks per host (default: all = current behavior); ad-hoc per-stack UPDATE button
+- [ ] Scans and selective updates audited via the step contract
+
+#### Feature: Changelogs + breaking-change surface (M3.7)
+**Description:** For images that map to a GitHub repo, fetch release notes (GitHub Releases API) for the current..latest range and show them inline before updating; major version bumps are flagged as potentially breaking. Mapping is curated with a label override (Renovate-style); Docker-Hub-only images link out. Fills the breaking-risk slot on the dashboard services strip.
+**Acceptance Criteria:**
+- [ ] Image→repo mapping (built-in curation + per-image override), GitHub Releases notes fetched inline for the upgrade range
+- [ ] Major bumps flagged "potentially breaking" in the stack list, pre-flight summary, and dashboard strip
+- [ ] Unmapped images degrade gracefully to a link-out; fetch failures never block updates
+- [ ] Tests green (mapping, range notes, flagging); audited fetches
+
 ---
 
 ## Future Milestones
