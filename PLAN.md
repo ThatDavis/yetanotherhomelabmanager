@@ -36,8 +36,19 @@
 - [x] **M3.3: Post-update verification** (Issue #24, branch `feature/24-post-update-verification`, PR #26) — host.verify before/after updates, app-side service TCP checks + docker-published port discovery with compose attribution, pre-check skip + post-check reboot gate; see docs/SPEC.md §Milestone 3
 - [x] **M3.5: Proxmox SSH host onboarding** (Issue #25, branch `feature/25-proxmox-host-onboarding`, PR #27) — one-click host creation from node URL + qemu agent IP discovery with per-VM register; bootstrap stays a one-time manual run
 - [x] **M3.6: Compose stack inventory + selective updates** — nightly stack scan (on-host registry checks, no stored registry secrets), Infra page rename with stacks panel, dashboard services strip + hosts-needing-updates card, stack-scoped container updates; design agreed with operator 2026-10-06, see docs/SPEC.md §Milestone 3
+- [ ] **UI cleanup + nav regroup (NOC.0)** — stale M3.2 copy, dead code (PlaceholderPage, /api/master-key, unused dashboard fields), node status on Nodes page, per-host osUpdatesPending surfaced, sidebar regroup ahead of NOC pages, fetch/timer paper cuts; design session 2026-11-15
 - [ ] **M3.7: Changelogs + breaking-change surface** — GitHub Releases inline notes for upgrade ranges, major-bump flags; see docs/SPEC.md §Milestone 3
 - [ ] Email reports after jobs complete (external SMTP relay)
+
+### Milestone 6: NOC (network monitoring + topology)
+**Status:** Planned (deep-plan validated 2026-11-15; starts after Milestone 3 closes — NOC.0 cleanup runs first, then M3.7 + email reports, then NOC.1)
+Goal: single pane of glass — SNMP device monitoring, live topology map with per-link rates, later per-conversation flows; homelab-first, SMB-extensible data model (nullable siteId, scoped SNMP profiles), no multi-user UI.
+- [ ] **NOC.1: SNMP foundation** — SnmpProfile (v2c/v3, creds in Secret store) + Device/Interface models, device.identify step, Devices page with TEST; targets: UniFi, OPNsense/pfSense, Cisco Catalyst, MikroTik (net-snmp npm lib)
+- [ ] **NOC.2: Polling + counters** — device.poll 60s staggered, HC counter rollup (1m/48h → 5m/30d → 1h/1y), interface rate graphs, device/interface down alerting via existing notify module
+- [ ] **NOC.3: Topology + Map** — device.topology (LLDP-MIB lldpRemTable + Cisco CDP cdpCacheTable, 5-min walk), ghost nodes for unmanaged neighbors, manual links, Map page (edge width/color = utilization, edge/device drawers)
+- [ ] **NOC.4: UniFi controller topology spike + vendor MIB cards** — timeboxed spike on unofficial controller API (UniFi exposes no lldpRemTable via SNMP); integrate if stable; Synology/TrueNAS/UPS vendor-MIB data cards
+- [ ] **NOC.5: Flows (per-conversation)** — collector sidecar (nfacctd/goflow2 → JSON → bounded 5-min top-N Postgres rollup; Akvorado documented as SMB path), Flows page (top talkers, who-talked-to-X search), map heat overlay; exporters: UniFi gateway IPFIX (native 9.1+), OPNsense/pfSense, MikroTik; sFlow from ICX/Omada/Netgear
+- [ ] **NOC.6: Inference + polish** — unmanaged-switch edges via BRIDGE-MIB/ARP, anomaly alerts, multi-site polish
 
 ### Milestone 4: Backups
 - [ ] PBS backup job status monitoring + stale-backup alerting
