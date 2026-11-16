@@ -14,6 +14,7 @@ const scheduleSchema = z.object({
   timeOfDay: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "HH:MM, server-local time"),
   osUpdates: z.boolean().default(true),
   containerUpdates: z.boolean().default(false),
+  containerProjects: z.array(z.string()).default([]), // [] = all projects on scoped hosts
   rebootAfterUpdate: z.boolean().default(false),
   verifyUpdates: z.boolean().default(true),
   enabled: z.boolean().default(true),
@@ -28,6 +29,7 @@ const updateSchema = z.object({
   timeOfDay: scheduleSchema.shape.timeOfDay.optional(),
   osUpdates: z.boolean().optional(),
   containerUpdates: z.boolean().optional(),
+  containerProjects: z.array(z.string()).optional(),
   rebootAfterUpdate: z.boolean().optional(),
   verifyUpdates: z.boolean().optional(),
   enabled: z.boolean().optional(),
@@ -36,12 +38,25 @@ const updateSchema = z.object({
 
 const hostSelect = { select: { id: true, alias: true, hostname: true, self: true } };
 
+function parseProjects(raw: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 export function scheduleRoutes(app: FastifyInstance) {
   app.get("/api/schedules", async () => {
-    return prisma.updateSchedule.findMany({
+    const schedules = await prisma.updateSchedule.findMany({
       include: { hosts: hostSelect, jobs: { orderBy: { startedAt: "desc" }, take: 1 } },
       orderBy: { name: "asc" },
     });
+    return schedules.map((s) => ({
+      ...s,
+      containerProjects: parseProjects(s.containerProjects),
+    }));
   });
 
   app.post("/api/schedules", async (req, reply) => {
@@ -50,9 +65,13 @@ export function scheduleRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "invalid schedule", details: parsed.error.issues });
     }
     try {
-      const { hostIds, ...data } = parsed.data;
+      const { hostIds, containerProjects, ...data } = parsed.data;
       const schedule = await prisma.updateSchedule.create({
-        data: { ...data, hosts: { connect: hostIds.map((id) => ({ id })) } },
+        data: {
+          ...data,
+          containerProjects: JSON.stringify(containerProjects),
+          hosts: { connect: hostIds.map((id) => ({ id })) },
+        },
         include: { hosts: hostSelect },
       });
       await audit({
@@ -61,7 +80,9 @@ export function scheduleRoutes(app: FastifyInstance) {
         params: parsed.data,
         ok: true,
       });
-      return reply.code(201).send(schedule);
+      return reply
+        .code(201)
+        .send({ ...schedule, containerProjects: parseProjects(schedule.containerProjects) });
     } catch (err) {
       await audit({
         action: "schedule.create",
@@ -105,6 +126,9 @@ export function scheduleRoutes(app: FastifyInstance) {
       where: { id },
       data: {
         ...fields,
+        ...(parsed.data.containerProjects !== undefined
+          ? { containerProjects: JSON.stringify(parsed.data.containerProjects) }
+          : {}),
         // Replace the full host selection whenever hostIds is sent.
         ...(parsed.data.hostIds !== undefined
           ? { hosts: { set: parsed.data.hostIds.map((hid) => ({ id: hid })) } }
@@ -118,7 +142,7 @@ export function scheduleRoutes(app: FastifyInstance) {
       params: parsed.data,
       ok: true,
     });
-    return schedule;
+    return { ...schedule, containerProjects: parseProjects(schedule.containerProjects) };
   });
 
   app.delete("/api/schedules/:id", async (req, reply) => {

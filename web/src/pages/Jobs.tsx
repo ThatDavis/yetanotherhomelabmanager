@@ -171,7 +171,13 @@ function JobDetailModal({
 
   return (
     <Modal
-      title={`${job?.kind === "reboot" ? "REBOOT" : "JOB"} // ${job?.schedule?.name ?? jobId ?? ""}`}
+      title={
+        job?.kind === "reboot"
+          ? `REBOOT // ${job?.schedule?.name ?? jobId ?? ""}`
+          : job?.kind === "stack"
+            ? `STACK // ${job?.project}`
+            : `JOB // ${job?.schedule?.name ?? jobId ?? ""}`
+      }
       open={jobId !== null}
       onClose={onClose}
       wide

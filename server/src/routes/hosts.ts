@@ -4,6 +4,7 @@ import { audit } from "../audit.js";
 import { prisma } from "../db.js";
 import { enqueueRebootJob } from "../jobs.js";
 import { bootstrapScript, masterPublicKey } from "../keys.js";
+import { osCheck, stacksScan } from "../stacks.js";
 import { healthCheck } from "../steps.js";
 
 const createHostSchema = z.object({
@@ -98,6 +99,16 @@ export function hostRoutes(app: FastifyInstance) {
       ok: true,
     });
     return host;
+  });
+
+  // M3.6: refresh cached stack inventory + OS pending count for one host.
+  app.post("/api/hosts/:id/scan", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const host = await prisma.host.findUnique({ where: { id } });
+    if (!host) return reply.code(404).send({ error: "host not found" });
+    const stacks = await stacksScan(host);
+    const os = await osCheck(host);
+    return { stacks, os };
   });
 
   app.post("/api/hosts/:id/reboot", async (req, reply) => {

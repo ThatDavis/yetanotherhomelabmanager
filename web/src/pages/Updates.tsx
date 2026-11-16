@@ -1,6 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, type Host, type UpdateSchedule } from "../api";
+import { api, type ComposeStack, type Host, type UpdateSchedule } from "../api";
 import { Drawer } from "../components/Drawer";
 import { Modal } from "../components/Modal";
 import { PageHeader } from "../components/PageHeader";
@@ -262,6 +262,8 @@ function ScheduleFormDrawer({
   const [timeOfDay, setTimeOfDay] = useState("03:00");
   const [osUpdates, setOsUpdates] = useState(true);
   const [containerUpdates, setContainerUpdates] = useState(false);
+  const [containerProjects, setContainerProjects] = useState<string[]>([]);
+  const [knownStacks, setKnownStacks] = useState<string[]>([]);
   const [rebootAfterUpdate, setRebootAfterUpdate] = useState(false);
   const [verifyUpdates, setVerifyUpdates] = useState(true);
   const [enabled, setEnabled] = useState(true);
@@ -276,11 +278,15 @@ function ScheduleFormDrawer({
       setTimeOfDay(schedule?.timeOfDay ?? "03:00");
       setOsUpdates(schedule?.osUpdates ?? true);
       setContainerUpdates(schedule?.containerUpdates ?? false);
+      setContainerProjects(schedule?.containerProjects ?? []);
       setRebootAfterUpdate(schedule?.rebootAfterUpdate ?? false);
       setVerifyUpdates(schedule?.verifyUpdates ?? true);
       setEnabled(schedule?.enabled ?? true);
       setHostIds(schedule?.hosts.map((h) => h.id) ?? []);
       setError(null);
+      api<ComposeStack[]>("/stacks")
+        .then((stacks) => setKnownStacks([...new Set(stacks.map((s) => s.project))].sort()))
+        .catch(() => {});
       api<Host[]>("/hosts")
         .then(setAllHosts)
         .catch(() => {});
@@ -300,6 +306,7 @@ function ScheduleFormDrawer({
         timeOfDay,
         osUpdates,
         containerUpdates,
+        containerProjects: containerUpdates ? containerProjects : [],
         rebootAfterUpdate,
         verifyUpdates,
         enabled,
@@ -386,6 +393,30 @@ function ScheduleFormDrawer({
               CONTAINER UPDATES (docker compose projects)
             </span>
           </label>
+          {containerUpdates && knownStacks.length > 0 && (
+            <div className="ml-6 border-l border-surface1 pl-3">
+              <span className="micro-label">STACKS ([] = ALL)</span>
+              <div className="mt-1 flex flex-col gap-1">
+                {knownStacks.map((name) => (
+                  <label key={name} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={containerProjects.includes(name)}
+                      onChange={(e) =>
+                        setContainerProjects(
+                          e.target.checked
+                            ? [...containerProjects, name]
+                            : containerProjects.filter((p) => p !== name),
+                        )
+                      }
+                      className="accent-[var(--color-accent)]"
+                    />
+                    <span className="font-mono text-xs text-subtext1">{name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
