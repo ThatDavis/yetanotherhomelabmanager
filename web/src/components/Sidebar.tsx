@@ -1,34 +1,43 @@
-import { useEffect, useState } from "react";
 import { NavLink } from "react-router";
-import { api, type DashboardData } from "../api";
+import { api } from "../api";
+import { useDashboard } from "../dashboard";
 import { type Status, StatusBadge } from "./StatusBadge";
 
-// Sections grow with milestones (docs/UI.md §1)
-const SECTIONS = [
-  { to: "/", label: "Dashboard", glyph: "▚", end: true },
-  { to: "/uptime", label: "Uptime", glyph: "▲" },
-  { to: "/alerts", label: "Alerts", glyph: "⚠" },
-  { to: "/nodes", label: "Nodes", glyph: "▦" },
-  { to: "/guests", label: "Infra", glyph: "▤" },
-  { to: "/updates", label: "Updates", glyph: "↻" },
-  { to: "/jobs", label: "Jobs", glyph: "▶" },
-  { to: "/audit", label: "Audit", glyph: "≡" },
-  { to: "/settings", label: "Settings", glyph: "⚙" },
+// Grouped sections; groups grow with milestones (docs/UI.md §1).
+// NOC (M6) adds Map + Devices under MONITOR.
+const SECTION_GROUPS = [
+  {
+    label: "MONITOR",
+    items: [
+      { to: "/", label: "Dashboard", glyph: "▚", end: true },
+      { to: "/uptime", label: "Uptime", glyph: "▲" },
+      { to: "/alerts", label: "Alerts", glyph: "⚠" },
+    ],
+  },
+  {
+    label: "INFRA",
+    items: [
+      { to: "/nodes", label: "Nodes", glyph: "▦" },
+      { to: "/guests", label: "Infra", glyph: "▤" },
+    ],
+  },
+  {
+    label: "OPS",
+    items: [
+      { to: "/updates", label: "Updates", glyph: "↻" },
+      { to: "/jobs", label: "Jobs", glyph: "▶" },
+      { to: "/audit", label: "Audit", glyph: "≡" },
+    ],
+  },
+  {
+    label: "SYSTEM",
+    items: [{ to: "/settings", label: "Settings", glyph: "⚙" }],
+  },
 ] as const;
 
-// Worst status across ping targets + nodes, polled (docs/UI.md §1: always visible).
+// Worst status across ping targets + nodes (docs/UI.md §1: always visible).
 function HealthChip() {
-  const [summary, setSummary] = useState<DashboardData["summary"] | null>(null);
-
-  useEffect(() => {
-    const load = () =>
-      api<DashboardData>("/dashboard")
-        .then((d) => setSummary(d.summary))
-        .catch(() => {});
-    load();
-    const timer = setInterval(load, 60_000);
-    return () => clearInterval(timer);
-  }, []);
+  const summary = useDashboard().data?.summary;
 
   if (!summary) return <StatusBadge status="unknown" label="…" />;
   const down = summary.targetsDown;
@@ -57,31 +66,36 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 py-2">
-        {SECTIONS.map((s) => (
-          <NavLink
-            key={s.to}
-            to={s.to}
-            end={"end" in s && s.end}
-            className={({ isActive }) =>
-              `flex items-center gap-3 border-l-2 px-4 py-2 font-mono text-sm transition-colors duration-150 ${
-                isActive
-                  ? "border-accent bg-surface0/50 text-text"
-                  : "border-transparent text-subtext0 hover:bg-surface0/30 hover:text-text"
-              }`
-            }
-          >
-            <span aria-hidden className="w-4 text-center">
-              {s.glyph}
-            </span>
-            {s.label}
-          </NavLink>
+        {SECTION_GROUPS.map((group) => (
+          <div key={group.label} className="mt-2 first:mt-0">
+            <div className="micro-label px-4 py-1">{group.label}</div>
+            {group.items.map((s) => (
+              <NavLink
+                key={s.to}
+                to={s.to}
+                end={"end" in s && s.end}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 border-l-2 px-4 py-2 font-mono text-sm transition-colors duration-150 ${
+                    isActive
+                      ? "border-accent bg-surface0/50 text-text"
+                      : "border-transparent text-subtext0 hover:bg-surface0/30 hover:text-text"
+                  }`
+                }
+              >
+                <span aria-hidden className="w-4 text-center">
+                  {s.glyph}
+                </span>
+                {s.label}
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
 
       <button
         type="button"
         onClick={async () => {
-          await fetch("/api/auth/logout", { method: "POST" });
+          await api("/auth/logout", { method: "POST" });
           window.location.href = "/login";
         }}
         className="micro-label block w-full border-t border-surface0 px-4 py-2 text-left transition-colors duration-150 hover:text-status-error"

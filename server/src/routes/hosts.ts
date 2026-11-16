@@ -153,8 +153,6 @@ export function hostRoutes(app: FastifyInstance) {
     return reply.type("text/plain").send(script);
   });
 
-  app.get("/api/master-key", async () => ({ publicKey: await masterPublicKey() }));
-
   app.post("/api/hosts/:id/probe", async (req, reply) => {
     const { id } = req.params as { id: string };
     const host = await prisma.host.findUnique({ where: { id } });

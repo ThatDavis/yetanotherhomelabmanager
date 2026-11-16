@@ -1,6 +1,12 @@
-import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
+import {
+  type PublicKeyCredentialCreationOptionsJSON,
+  type PublicKeyCredentialRequestOptionsJSON,
+  startAuthentication,
+  startRegistration,
+} from "@simplewebauthn/browser";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { api } from "../api";
 
 // Login is a decorative surface (docs/UI.md §6) — full retro-terminal treatment.
 type Status = { registered: boolean; authenticated: boolean } | null;
@@ -12,9 +18,8 @@ export function Login() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/status")
-      .then((r) => r.json())
-      .then((s: { registered: boolean; authenticated: boolean }) => {
+    api<{ registered: boolean; authenticated: boolean }>("/auth/status")
+      .then((s) => {
         if (s.authenticated) navigate("/");
         else setStatus(s);
       })
@@ -25,22 +30,23 @@ export function Login() {
     setBusy(true);
     setError(null);
     try {
-      const optRes = await fetch(`/api/auth/${kind}/options`, { method: "POST" });
-      if (!optRes.ok) throw new Error((await optRes.json()).error ?? `HTTP ${optRes.status}`);
-      const { challengeKey, ...options } = await optRes.json();
+      const { challengeKey, ...options } = await api<
+        { challengeKey: string } & Record<string, unknown>
+      >(`/auth/${kind}/options`, { method: "POST" });
 
       const response =
         kind === "register"
-          ? await startRegistration({ optionsJSON: options })
-          : await startAuthentication({ optionsJSON: options });
+          ? await startRegistration({
+              optionsJSON: options as unknown as PublicKeyCredentialCreationOptionsJSON,
+            })
+          : await startAuthentication({
+              optionsJSON: options as unknown as PublicKeyCredentialRequestOptionsJSON,
+            });
 
-      const verifyRes = await fetch(`/api/auth/${kind}/verify`, {
+      await api<unknown>(`/auth/${kind}/verify`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
         body: JSON.stringify({ challengeKey, response }),
       });
-      if (!verifyRes.ok)
-        throw new Error((await verifyRes.json()).error ?? `HTTP ${verifyRes.status}`);
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "ceremony failed");

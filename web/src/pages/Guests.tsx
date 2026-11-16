@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { api, type ComposeStack, type Host, type ProbeResult } from "../api";
+import { useNavigate } from "react-router";
+import { api, apiText, type ComposeStack, type Host, type ProbeResult } from "../api";
 import { Drawer } from "../components/Drawer";
 import { GuestInventory } from "../components/GuestInventory";
 import { Modal } from "../components/Modal";
@@ -20,6 +21,7 @@ const inputCls =
   "w-full border border-surface1 bg-crust px-3 py-1.5 font-mono text-sm text-text outline-none transition-colors duration-150 focus:border-accent";
 
 export function Guests() {
+  const navigate = useNavigate();
   const [hosts, setHosts] = useState<Host[]>([]);
   const [stacks, setStacks] = useState<ComposeStack[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -49,8 +51,8 @@ export function Guests() {
   };
 
   const showBootstrap = async (host: Host) => {
-    const res = await fetch(`/api/hosts/${host.id}/bootstrap`);
-    setDrawer({ kind: "bootstrap", host, script: await res.text() });
+    const script = await apiText(`/hosts/${host.id}/bootstrap`);
+    setDrawer({ kind: "bootstrap", host, script });
   };
 
   const removeHost = async (host: Host) => {
@@ -74,7 +76,7 @@ export function Guests() {
     const { jobId } = await api<{ jobId: string }>(`/stacks/${stack.id}/update`, {
       method: "POST",
     });
-    window.location.href = `/jobs?job=${jobId}`;
+    navigate(`/jobs?job=${jobId}`);
   };
 
   return (
@@ -149,6 +151,7 @@ export function Guests() {
                   <th className="py-2 pr-4 font-normal">ADDRESS</th>
                   <th className="py-2 pr-4 font-normal">NOTES</th>
                   <th className="py-2 pr-4 font-normal">BOOT</th>
+                  <th className="py-2 pr-4 font-normal">OS UPDATES</th>
                   <th className="py-2 font-normal">ACTIONS</th>
                 </tr>
               </thead>
@@ -171,6 +174,22 @@ export function Guests() {
                     </td>
                     <td className="py-2 pr-4">{h.notes}</td>
                     <td className="py-2 pr-4">{h.bootOrder}</td>
+                    <td
+                      className="py-2 pr-4"
+                      title={
+                        h.osCheckedAt
+                          ? `checked ${new Date(h.osCheckedAt).toLocaleString()}`
+                          : "not checked yet — nightly scan or CHECK NOW"
+                      }
+                    >
+                      {h.osUpdatesPending < 0 ? (
+                        <span className="text-subtext0">—</span>
+                      ) : h.osUpdatesPending === 0 ? (
+                        <StatusBadge status="ok" label="0" />
+                      ) : (
+                        <StatusBadge status="warn" label={String(h.osUpdatesPending)} />
+                      )}
+                    </td>
                     <td className="py-2">
                       <div className="flex gap-3">
                         <button
@@ -596,6 +615,7 @@ function EditHostDrawer({
 }
 
 function RebootModal({ host, onClose }: { host: Host | null; onClose: () => void }) {
+  const navigate = useNavigate();
   const [confirmText, setConfirmText] = useState("");
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -621,7 +641,7 @@ function RebootModal({ host, onClose }: { host: Host | null; onClose: () => void
       const { jobId } = await api<{ jobId: string }>(`/hosts/${host.id}/reboot`, {
         method: "POST",
       });
-      window.location.href = `/jobs?job=${jobId}`;
+      navigate(`/jobs?job=${jobId}`);
     } catch (err) {
       setError((err as Error).message);
       setStarting(false);

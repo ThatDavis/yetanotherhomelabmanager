@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { api, type ComposeStack, type Host, type UpdateSchedule } from "../api";
 import { Drawer } from "../components/Drawer";
 import { Modal } from "../components/Modal";
@@ -88,7 +88,7 @@ export function Updates() {
                       {h.self && (
                         <span
                           className="text-status-warn"
-                          title="Runs the app — reboot deferred to M3.2"
+                          title="Runs the app — skipped in auto-reboot rolls; manual reboot refused"
                         >
                           {" "}
                           [SELF]
@@ -179,6 +179,7 @@ function PreflightModal({
 
 // Keyed by schedule id above: fresh state per schedule, no reset effect needed.
 function PreflightBody({ schedule, onClose }: { schedule: UpdateSchedule; onClose: () => void }) {
+  const navigate = useNavigate();
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -195,7 +196,7 @@ function PreflightBody({ schedule, onClose }: { schedule: UpdateSchedule; onClos
       const { jobId } = await api<{ jobId: string }>(`/schedules/${schedule.id}/run`, {
         method: "POST",
       });
-      window.location.href = `/jobs?job=${jobId}`;
+      navigate(`/jobs?job=${jobId}`);
     } catch (err) {
       setError((err as Error).message);
       setStarting(false);
@@ -203,7 +204,7 @@ function PreflightBody({ schedule, onClose }: { schedule: UpdateSchedule; onClos
   };
 
   return (
-    <Modal title={`RUN // ${schedule.name}`} open onClose={onClose}>
+    <>
       <div className="micro-label mb-2">▚ PRE-FLIGHT SUMMARY</div>
       <p className="mb-3 font-mono text-sm text-subtext1">
         This will run {steps.join(" then ")} on {schedule.hosts.length}{" "}
@@ -213,14 +214,14 @@ function PreflightBody({ schedule, onClose }: { schedule: UpdateSchedule; onClos
         {schedule.hosts.map((h) => (
           <li key={h.id}>
             ▸ {h.alias}
-            {h.self ? " [SELF — app host; reboot deferred to M3.2]" : ""}
+            {h.self ? " [SELF — app host; never auto-rebooted]" : ""}
           </li>
         ))}
       </ul>
       {selfHosts.length > 0 && (
         <p className="mb-3 font-mono text-xs text-status-warn">
-          ⚠ Includes the host running this app. Updates apply normally; the app stays up until a
-          later milestone adds reboot orchestration.
+          ⚠ Includes the host running this app. Updates apply normally; it is skipped in any
+          auto-reboot roll and cannot be rebooted from here.
         </p>
       )}
       {error && <p className="mb-3 font-mono text-sm text-status-error">{error}</p>}
@@ -241,7 +242,7 @@ function PreflightBody({ schedule, onClose }: { schedule: UpdateSchedule; onClos
           CANCEL
         </button>
       </div>
-    </Modal>
+    </>
   );
 }
 

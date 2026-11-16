@@ -1,12 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, type DashboardData } from "../api";
 import { PageHeader } from "../components/PageHeader";
 import { Panel } from "../components/Panel";
 import { StatusBadge } from "../components/StatusBadge";
 import { StatusStrip, stripBlocks } from "../components/StatusStrip";
-
-const POLL_MS = 30_000;
+import { useDashboard } from "../dashboard";
 
 function SummaryCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
@@ -19,20 +16,7 @@ function SummaryCard({ label, value, detail }: { label: string; value: string; d
 }
 
 export function Dashboard() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(() => {
-    api<DashboardData>("/dashboard")
-      .then(setData)
-      .catch((err: Error) => setError(err.message));
-  }, []);
-
-  useEffect(() => {
-    refresh();
-    const timer = setInterval(refresh, POLL_MS);
-    return () => clearInterval(timer);
-  }, [refresh]);
+  const { data, error } = useDashboard();
 
   const s = data?.summary;
 

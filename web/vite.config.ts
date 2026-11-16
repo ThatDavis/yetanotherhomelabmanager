@@ -6,11 +6,10 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      // Dev: forward API calls to the Fastify server
+      // Dev: forward API calls to the Fastify server (prefix kept — all routes are /api/*)
       "/api": {
         target: "http://localhost:3000",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },

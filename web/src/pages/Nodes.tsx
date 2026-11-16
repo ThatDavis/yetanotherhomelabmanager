@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import {
   type AgentIpsData,
   api,
+  apiText,
   type HostRegisterResult,
   type Node,
   type ProbeResult,
@@ -79,7 +80,7 @@ export function Nodes() {
       const result = await api<HostRegisterResult>(`/nodes/${node.id}/register-host`, {
         method: "POST",
       });
-      const script = await fetch(`/api/hosts/${result.host.id}/bootstrap`).then((r) => r.text());
+      const script = await apiText(`/hosts/${result.host.id}/bootstrap`);
       setDrawer({ kind: "host", node, result, error: null, script });
     } catch (err) {
       setDrawer({ kind: "host", node, result: null, error: (err as Error).message, script: null });
@@ -152,6 +153,7 @@ export function Nodes() {
             <tr className="micro-label border-b border-surface1 text-left">
               <th className="py-2 pr-4 font-normal">NAME</th>
               <th className="py-2 pr-4 font-normal">TYPE</th>
+              <th className="py-2 pr-4 font-normal">STATUS</th>
               <th className="py-2 pr-4 font-normal">URL</th>
               <th className="py-2 pr-4 font-normal">TLS PIN</th>
               <th className="py-2 font-normal">ACTIONS</th>
@@ -162,6 +164,19 @@ export function Nodes() {
               <tr key={n.id} className="border-b border-surface0 text-subtext1">
                 <td className="py-2 pr-4 text-text">{n.name}</td>
                 <td className="py-2 pr-4 uppercase">{n.type}</td>
+                <td
+                  className="py-2 pr-4"
+                  title={
+                    n.lastCheckedAt
+                      ? `last checked ${new Date(n.lastCheckedAt).toLocaleString()}`
+                      : "never checked"
+                  }
+                >
+                  <StatusBadge
+                    status={n.status === "up" ? "ok" : n.status === "down" ? "error" : "unknown"}
+                    label={n.status.toUpperCase()}
+                  />
+                </td>
                 <td className="py-2 pr-4">{n.url}</td>
                 <td className="py-2 pr-4">
                   {n.tlsFingerprint ? (
