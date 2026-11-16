@@ -136,6 +136,7 @@ function JobDetailModal({
   useEffect(() => {
     if (!jobId || !isRunning) return;
     let closed = false;
+    let fallback: number | null = null;
     const source = new EventSource(`/api/jobs/${jobId}/events`);
     const onStep = (raw: MessageEvent) => {
       const step = JSON.parse(raw.data) as JobStep;
@@ -154,19 +155,25 @@ function JobDetailModal({
     source.addEventListener("status", onStatus);
     source.onerror = () => {
       source.close();
-      if (!closed) {
-        const timer = setInterval(() => {
-          api<Job>(`/jobs/${jobId}`).then((j) => {
-            setJob(j);
-            if (j.status !== "running") {
-              clearInterval(timer);
-              onChanged();
-            }
-          });
+      if (!closed && fallback === null) {
+        fallback = setInterval(() => {
+          api<Job>(`/jobs/${jobId}`)
+            .then((j) => {
+              setJob(j);
+              if (j.status !== "running") {
+                if (fallback !== null) clearInterval(fallback);
+                fallback = null;
+                onChanged();
+              }
+            })
+            .catch(() => {});
         }, POLL_MS);
       }
     };
-    return () => source.close();
+    return () => {
+      source.close();
+      clearInterval(fallback ?? undefined);
+    };
   }, [jobId, isRunning, load, onChanged]);
 
   return (
@@ -232,7 +239,7 @@ function JobDetailModal({
                   {s.rebootPending && (
                     <span
                       className="text-status-warn"
-                      title="Reboot needed — orchestration lands in M3.2"
+                      title="Reboot required to finish updates — handled by a schedule reboot roll or manual reboot on the Infra page"
                     >
                       ⟳ REBOOT PENDING
                     </span>

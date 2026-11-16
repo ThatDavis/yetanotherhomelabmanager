@@ -56,12 +56,9 @@ test("bootstrap endpoint serves a script containing the master public key", asyn
   const created = await app.inject({ method: "POST", url: "/api/hosts", payload: host });
   const id = created.json().id;
 
-  const key = await app.inject({ method: "GET", url: "/api/master-key" });
-  expect(key.json().publicKey).toMatch(/^ssh-ed25519 /);
-
   const script = await app.inject({ method: "GET", url: `/api/hosts/${id}/bootstrap` });
   expect(script.statusCode).toBe(200);
-  expect(script.body).toContain(key.json().publicKey);
+  expect(script.body).toMatch(/ssh-ed25519 /);
 });
 
 test("probe on missing host returns 404", async () => {

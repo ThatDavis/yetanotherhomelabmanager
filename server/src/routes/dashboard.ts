@@ -17,7 +17,7 @@ export function dashboardRoutes(app: FastifyInstance) {
       prisma.auditEntry.findMany({ orderBy: { at: "desc" }, take: 10 }),
       prisma.composeStack.findMany({ select: { services: true, drift: true } }),
       prisma.host.findMany({
-        select: { id: true, alias: true, osUpdatesPending: true, osCheckedAt: true },
+        select: { osUpdatesPending: true },
       }),
     ]);
 
@@ -50,8 +50,6 @@ export function dashboardRoutes(app: FastifyInstance) {
       nodes,
       guests,
       recentAudit,
-      hosts,
-      stacks: { total: stacksTotal, updatable: stacksUpdatable, drift: stacksDrift },
       summary: {
         targetsUp: targets.filter((t) => t.status === "up").length,
         targetsDown: targets.filter((t) => t.status === "down").length,

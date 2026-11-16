@@ -29,6 +29,8 @@ export type Node = {
   url: string;
   tokenId: string;
   tlsFingerprint: string;
+  status: string;
+  lastCheckedAt: string | null;
 };
 
 export type Guest = {
@@ -174,9 +176,17 @@ export type DashboardData = {
     stacksDrift: number;
     hostsNeedingUpdates: number;
   };
-  hosts: { id: string; alias: string; osUpdatesPending: number; osCheckedAt: string | null }[];
-  stacks: { total: number; updatable: number; drift: number };
 };
+
+// Text variant for non-JSON endpoints (e.g. bootstrap scripts) — same 401 handling.
+export async function apiText(path: string, init?: RequestInit): Promise<string> {
+  const res = await fetch(`/api${path}`, init);
+  if (res.status === 401 && !window.location.pathname.startsWith("/login")) {
+    window.location.href = "/login";
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
