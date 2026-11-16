@@ -37,7 +37,7 @@
 - [x] **M3.5: Proxmox SSH host onboarding** (Issue #25, branch `feature/25-proxmox-host-onboarding`, PR #27) — one-click host creation from node URL + qemu agent IP discovery with per-VM register; bootstrap stays a one-time manual run
 - [x] **M3.6: Compose stack inventory + selective updates** — nightly stack scan (on-host registry checks, no stored registry secrets), Infra page rename with stacks panel, dashboard services strip + hosts-needing-updates card, stack-scoped container updates; design agreed with operator 2026-10-06, see docs/SPEC.md §Milestone 3
 - [ ] **UI cleanup + nav regroup (NOC.0)** — stale M3.2 copy, dead code (PlaceholderPage, /api/master-key, unused dashboard fields), node status on Nodes page, per-host osUpdatesPending surfaced, sidebar regroup ahead of NOC pages, fetch/timer paper cuts; design session 2026-11-15
-- [ ] **M3.7: Changelogs + breaking-change surface** — GitHub Releases inline notes for upgrade ranges, major-bump flags; see docs/SPEC.md §Milestone 3
+- [ ] **M3.7: Changelogs + breaking-change surface + CVE matching** — GitHub Releases inline notes for upgrade ranges, major-bump flags, AND CVE matching of compose image tags against OSV.dev/GitHub advisories (image→repo mapping is the shared join key — build once); see docs/SPEC.md §Milestone 3
 - [ ] Email reports after jobs complete (external SMTP relay)
 
 ### Milestone 6: NOC (network monitoring + topology)
@@ -49,6 +49,16 @@ Goal: single pane of glass — SNMP device monitoring, live topology map with pe
 - [ ] **NOC.4: UniFi controller topology spike + vendor MIB cards** — timeboxed spike on unofficial controller API (UniFi exposes no lldpRemTable via SNMP); integrate if stable; Synology/TrueNAS/UPS vendor-MIB data cards
 - [ ] **NOC.5: Flows (per-conversation)** — collector sidecar (nfacctd/goflow2 → JSON → bounded 5-min top-N Postgres rollup; Akvorado documented as SMB path), Flows page (top talkers, who-talked-to-X search), map heat overlay; exporters: UniFi gateway IPFIX (native 9.1+), OPNsense/pfSense, MikroTik; sFlow from ICX/Omada/Netgear
 - [ ] **NOC.6: Inference + polish** — unmanaged-switch edges via BRIDGE-MIB/ARP, anomaly alerts, multi-site polish
+- [ ] **NOC.7: Network config backup + drift** — periodic pull of OPNsense config.xml / UniFi backup / IOS show-run, stored encrypted, diffed with change alerts; RANCID-lite over the jobs engine
+
+### Milestone 7: Security
+**Status:** Planned (deep-plan 2026-11-15; starts after NOC.3 — rogue-device detection needs the NOC device pipeline). Tier-1 security checks riding existing engines (SSH executor, scheduler, notify). Explicitly NOT building: SIEM, IDS/IPS, full vuln scanning, EDR — dedicated tools exist; YAHLM's edge is orchestration awareness.
+- [ ] **M7.1: TLS cert expiry monitor** — probe declared HTTPS services, alert at 30/14/7 days (ping-target pattern)
+- [ ] **M7.2: Open-port exposure diff** — scheduled connect-scan per host diffed against declared services + docker-published ports; alert on unexpected listeners
+- [ ] **M7.3: SSH hardening audit** — nightly per-host: PasswordAuthentication/PermitRootLogin, authorized_keys drift, UID-0 users, sudoers changes
+- [ ] **M7.4: Rogue device detection** — first-seen-MAC alerting from router ARP/DHCP tables (SNMP ipNetToMediaTable, OPNsense/UniFi API)
+- [ ] **M7.5: fail2ban oversight** — f2b.status step (jails, banned IPs, cross-host IP search), ban-spike alerting via notify, audited unban action; jail config management explicitly OUT (ansible territory); strict pinned-parser exception to the no-text-parsing principle; M7.3 checks app host IP is in ignoreip (self-lockout deadlock prevention)
+- [ ] Roadmap notes (unscheduled): threat-intel on NOC.5 flows, firewall rule audit (any-any/unused/shadowed), auth-log anomaly spikes
 
 ### Milestone 4: Backups
 - [ ] PBS backup job status monitoring + stale-backup alerting
