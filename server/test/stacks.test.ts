@@ -1,5 +1,5 @@
 import "./env.js";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterAll, afterEach, expect, test, vi } from "vitest";
 import { buildServer } from "../src/app.js";
 import { prisma } from "../src/db.js";
 import { execOnHost } from "../src/executor.js";
@@ -15,6 +15,9 @@ vi.mock("../src/executor.js", () => ({
 // implementations decide Hub/GHCR responses, default is "not found".
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock);
+// All test files share one fork — a stubbed global survives into files that
+// run after this one (order is not guaranteed), breaking their real fetches.
+afterAll(() => vi.unstubAllGlobals());
 
 const execMock = vi.mocked(execOnHost);
 const app = buildServer({ spaDir: "/nonexistent", auth: false });

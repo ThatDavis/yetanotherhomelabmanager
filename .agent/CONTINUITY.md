@@ -173,6 +173,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ## [DISCOVERIES]
 
+- 2026-11-15: `vi.stubGlobal` leaks across test files in the shared single fork — stacks.test.ts's fetch stub broke notify.test.ts's real webhook fetches when the file ran first. Vitest file order is filesystem-dependent on fresh CI caches (local order is skewed by duration cache), so it passed locally and failed in CI. Rule: every stubGlobal needs an `afterAll(() => vi.unstubAllGlobals())` in the same file. Also: dashboard/secrets tests are order-dependent WITHIN their files (later tests assert state created by earlier ones) — never run them with `--sequence.shuffle`.
 - 2026-10-01: CI runs `biome check .` from the repo root (85 files, stricter than per-package runs) — it flagged useExhaustiveDependencies errors that `biome check src` inside web/ did not surface. Always run lint from the repo root before pushing; the DoD lint step must use `biome check .`.
 
 - 2026-09-28: Passkeys (WebAuthn) hard-require HTTPS + stable hostname — deployment must sit behind the operator's existing proxy/CA; RP_ID/ORIGIN env must match exactly (top M1 failure mode).
