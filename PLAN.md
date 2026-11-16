@@ -79,7 +79,7 @@ Goal: single pane of glass — SNMP device monitoring, live topology map with pe
 
 ## Active Feature
 
-_None — NOC.0 complete, PR #31 awaiting merge._
+_None — NOC.0 complete (PR #31 merged). Next per locked sequence: M3.7 + email reports, then NOC.1._
 
 ## Completed Features
 
