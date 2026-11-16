@@ -28,7 +28,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 - [x] M3.3: Post-update verification (Issue #24, branch feature/24-post-update-verification)
 - [x] M3.5: Proxmox SSH host onboarding (Issue #25, branch feature/25-proxmox-host-onboarding, stacked on #24)
 - [x] M3.6: Compose stack inventory + selective updates (Issue #28, branch feature/28-compose-stack-inventory)
-- [ ] NOC.0: UI cleanup + nav regroup (Issue #30, branch feature/30-ui-cleanup-nav-regroup)
+- [x] NOC.0: UI cleanup + nav regroup (Issue #30, branch feature/30-ui-cleanup-nav-regroup)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -178,6 +178,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ Sidebar regroup into sections (MONITOR/INFRA/OPS/SYSTEM groups) |
 |  |    ✓ Shared dashboard polling (web/src/dashboard.ts useDashboard — single 30s poller for Dashboard + HealthChip) + paper cuts: apiText() for bootstrap fetches, logout via api(), Login ceremony via api(), 3 full-reload job links → router, nested preflight modal flattened, Jobs SSE fallback timer leak fixed, Guests test wrapped in MemoryRouter |
 |  |    ✓ Built: stale M3.2 strings → shipped behavior; PlaceholderPage + /api/master-key deleted (bootstrap test rewritten); unused dashboard hosts/stacks payload fields removed; Nodes page STATUS column (liveness was dashboard-only); Infra OS UPDATES column (osUpdatesPending was collected-but-invisible); browser-verified on :3000 with real data (grouped sidebar, Nodes DOWN badge, hosts ⚠45/⚠15 matching dashboard card, zero console errors) — server 107/107, web 12/12, biome clean |
+| 2026-11-16 | Completed feature: UI cleanup + nav regroup (NOC.0, PR #31 — open, awaiting merge). DoD all PASS (server 107/107, web 12/12, biome 89 files); browser-verified on :3000 and :5173 with real data. 1 WARN: no new web component tests, matches convention. Fixed the vite dev proxy (broken since scaffold) found during verification. |
 | 2026-11-15 | Completed feature: Compose stack inventory + selective updates (M3.6, PR #29, CI green, merged 2026-11-16). DoD all PASS: build green, server 107/107, web 12/12, biome check . clean (89 files), no secrets/debug leftovers. 1 WARN: no web component tests for new pages, matches convention. |
 
 ## [DISCOVERIES]
@@ -245,6 +246,11 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 
 ### Notifications on state change (M2.3, 2026-10-01)
 - Exactly one alert per transition (target down/recovery, node down/up) to email (env SMTP, nodemailer) and/or DB-backed webhooks (JSON POST, editable without restart, per-target channel pick). Sends audited (notify.send/fail), never affect checks; unknown→up first-check is audited but not alerted. Fixed pre-existing zod .partial() defaults-wipe-on-PATCH bug (regression-pinned). Browser-verified; closes Milestone 2.
+
+### UI cleanup + nav regroup (NOC.0, 2026-11-16)
+- Audited redundancy list cleared: stale "deferred to M3.2" copy corrected to shipped behavior; PlaceholderPage + `/api/master-key` + unused dashboard payload fields deleted; Nodes page gained the STATUS column (liveness was dashboard-only); Infra hosts table gained OS UPDATES (`osUpdatesPending` was collected but rendered nowhere — dashboard tap-through dead-ended).
+- Sidebar regrouped into MONITOR/INFRA/OPS/SYSTEM groups ahead of NOC pages; single shared `useDashboard` poller (30s) replaces two independent timers; `apiText()` for text endpoints; job links use the SPA router; nested preflight modal flattened; Jobs SSE fallback timer leak fixed.
+- Fixed the vite dev proxy (broken since scaffold — stripped `/api` prefix the server requires); `pnpm dev` works now, verified live on :5173 (PR #31).
 
 ### Compose stack inventory + selective updates (M3.6, 2026-11-15)
 - Nightly cached scan of compose stacks on every registered host (stacks never block page loads); drift detected via compose config-hash; OS update check (apt/dnf) cached alongside. `ComposeStack` model, `Job.project`, `UpdateSchedule.containerProjects`.
