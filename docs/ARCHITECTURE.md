@@ -43,7 +43,7 @@
 ```
 
 **Conventions:**
-- API routes under `/api` semantics; Vite dev server proxies `/api/*` → Fastify `:3000` (prefix stripped)
+- API routes under `/api` semantics; Vite dev server proxies `/api/*` → Fastify `:3000` (prefix kept — server routes all carry `/api`)
 - Production: Fastify serves the built SPA from `web/dist` and the API together
 - `buildServer()` factory pattern so tests use `app.inject` without listening
 - Migrations always via `prisma migrate deploy` at container start — never `db push` in prod
