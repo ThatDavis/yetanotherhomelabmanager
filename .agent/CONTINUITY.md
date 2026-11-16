@@ -169,7 +169,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ Update-available: on-host digest checks + Hub/GHCR tag lists with cache |
 |  |    ✓ UI: Infra rename + stacks panel + dashboard strip/hosts card + stack-scoped container.update |
 |  |    ✓ Built: ComposeStack + Job.project + UpdateSchedule.containerProjects; stacks.ts (scan w/ drift via config-hash, os.check, on-host buildx digest compare, Hub/GHCR tag lists 6h cache, degrade-to-null); nightly 03:xx scheduler; stack jobs (kind=stack); /api/stacks + per-stack update + /api/hosts/:id/scan; Infra page (stacks panel, CHECK NOW), dashboard cards, schedule stack picker; live-verified against REAL homelab host (13 stacks, real update-available + latest versions) — server 107/107, web 12/12; fixed test-isolation leak (nightly scan wrote fixture rows to operator hosts; mock now refuses non-test hosts) |
-| 2026-11-15 | Completed feature: Compose stack inventory + selective updates (M3.6, PR #29 — open, awaiting merge). DoD all PASS: build green, server 107/107, web 12/12, biome check . clean (89 files), no secrets/debug leftovers. 1 WARN: no web component tests for new pages, matches convention. |
+| 2026-11-15 | Completed feature: Compose stack inventory + selective updates (M3.6, PR #29, CI green, merged 2026-11-16). DoD all PASS: build green, server 107/107, web 12/12, biome check . clean (89 files), no secrets/debug leftovers. 1 WARN: no web component tests for new pages, matches convention. |
 
 ## [DISCOVERIES]
 

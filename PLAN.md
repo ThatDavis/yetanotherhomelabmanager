@@ -58,7 +58,7 @@
 
 ## Active Feature
 
-_None — M3.6 complete, PR #29 awaiting merge._
+_None — M3.6 complete (PR #29 merged). Pick the next feature and run /dev:start-feature._
 
 ## Completed Features
 
