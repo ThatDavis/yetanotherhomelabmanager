@@ -126,13 +126,16 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 - [x] `container.update` becomes stack-scoped: schedules pick stacks per host (default: all = current behavior); ad-hoc per-stack UPDATE button
 - [x] Scans and selective updates audited via the step contract
 
-#### Feature: Changelogs + breaking-change surface (M3.7)
-**Description:** For images that map to a GitHub repo, fetch release notes (GitHub Releases API) for the current..latest range and show them inline before updating; major version bumps are flagged as potentially breaking. Mapping is curated with a label override (Renovate-style); Docker-Hub-only images link out. Fills the breaking-risk slot on the dashboard services strip.
+#### Feature: Changelogs + breaking-change surface + CVE matching (M3.7)
+**Description:** For images that map to a GitHub repo, fetch release notes (GitHub Releases API) for the current..latest range and show them inline before updating; major version bumps are flagged as potentially breaking. CVE matching uses GitHub Security Advisories repo-scoped: advisories whose affected ranges intersect the running version are flagged on the stack ("app CVEs from the project's own advisories — not an OS-layer scan"). Image→repo mapping precedence: OCI `org.opencontainers.image.source` label (captured at scan), then a curated built-in map; unmapped images link out. Fills the breaking-risk slot on the dashboard services strip.
 **Acceptance Criteria:**
-- [ ] Image→repo mapping (built-in curation + per-image override), GitHub Releases notes fetched inline for the upgrade range
-- [ ] Major bumps flagged "potentially breaking" in the stack list, pre-flight summary, and dashboard strip
-- [ ] Unmapped images degrade gracefully to a link-out; fetch failures never block updates
-- [ ] Tests green (mapping, range notes, flagging); audited fetches
+- [x] OCI source label captured in stack scan; mapping precedence label → curated map → null (link-out)
+- [x] GitHub Releases notes fetched inline for the upgrade range (current..latest), cached 6h, optional token from Secret store (anon 60/hr → 5000/hr)
+- [x] Major bumps flagged "potentially breaking" in the stack list, pre-flight summary, and dashboard strip
+- [x] GHSA advisories fetched per mapped repo; running-version intersection flags stacks with CVE count; failure degrades to no badge (never blocks updates)
+- [x] UI labels CVE data as app-level ("not an OS-layer scan")
+- [x] Unmapped images degrade gracefully to a link-out; fetch failures never block updates
+- [x] Tests green (mapping precedence, range notes, major-bump flags, advisory intersect, degrade paths); audited fetches
 
 ---
 

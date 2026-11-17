@@ -60,7 +60,9 @@ export function Dashboard() {
             detail={
               s
                 ? `${s.stacksUpdatable} update(s) available` +
-                  (s.stacksDrift > 0 ? ` · ${s.stacksDrift} drift` : "")
+                  (s.stacksDrift > 0 ? ` · ${s.stacksDrift} drift` : "") +
+                  (s.stacksBreaking > 0 ? ` · ${s.stacksBreaking} major` : "") +
+                  (s.stacksWithCves > 0 ? ` · ${s.stacksWithCves} cve` : "")
                 : "nightly scan"
             }
           />

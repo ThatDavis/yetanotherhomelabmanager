@@ -1,6 +1,13 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { api, apiText, type ComposeStack, type Host, type ProbeResult } from "../api";
+import {
+  api,
+  apiText,
+  type ChangelogData,
+  type ComposeStack,
+  type Host,
+  type ProbeResult,
+} from "../api";
 import { Drawer } from "../components/Drawer";
 import { GuestInventory } from "../components/GuestInventory";
 import { Modal } from "../components/Modal";
@@ -73,6 +80,21 @@ export function Guests() {
   };
 
   const updateStack = async (stack: ComposeStack) => {
+    // M3.7 pre-flight: surface breaking/CVE risk before the destructive pull.
+    const risky = stack.services.filter((s) => s.breaking || (s.cves ?? 0) > 0);
+    if (risky.length > 0) {
+      const lines = risky.map(
+        (s) =>
+          `- ${s.image}${s.latest ? ` → ${s.latest}` : ""}` +
+          `${s.breaking ? " (MAJOR BUMP)" : ""}${(s.cves ?? 0) > 0 ? ` (${s.cves} app CVEs)` : ""}`,
+      );
+      if (
+        !window.confirm(
+          `${stack.project}: ${risky.length} service(s) carry update risk:\n${lines.join("\n")}\n\nProceed with pull && up -d?`,
+        )
+      )
+        return;
+    }
     const { jobId } = await api<{ jobId: string }>(`/stacks/${stack.id}/update`, {
       method: "POST",
     });
@@ -418,6 +440,15 @@ function StackRow({
         <td className="py-2 pr-4">
           <div className="flex gap-2">
             {pending > 0 && <StatusBadge status="warn" label="UPDATE AVAILABLE" />}
+            {stack.services.some((x) => x.breaking) && (
+              <StatusBadge status="warn" label="MAJOR BUMP" />
+            )}
+            {stack.services.some((x) => (x.cves ?? 0) > 0) && (
+              <StatusBadge
+                status="error"
+                label={`CVE ${stack.services.reduce((n, x) => n + (x.cves ?? 0), 0)}`}
+              />
+            )}
             {stack.drift && <StatusBadge status="error" label="DRIFT" />}
             {pending === 0 && !stack.drift && <StatusBadge status="ok" label="CURRENT" />}
           </div>
@@ -444,21 +475,30 @@ function StackRow({
           <td colSpan={6} className="py-2">
             <div className="border border-surface0 bg-crust/40 px-3 py-2 font-mono text-xs">
               {stack.services.map((svc) => (
-                <div key={svc.name} className="flex gap-3 py-0.5">
-                  <span className="text-text">{svc.name}</span>
-                  <span className="text-subtext0">
-                    {svc.image}
-                    {svc.latest && svc.latest !== svc.tag && ` → ${svc.latest}`}
-                  </span>
-                  <span className={svc.state === "running" ? "text-status-ok" : "text-status-warn"}>
-                    {svc.state}
-                  </span>
-                  {svc.updatable === true && (
-                    <span className="text-status-warn">update available</span>
-                  )}
-                  {svc.updatable === null && (
-                    <span className="text-subtext0">registry unknown</span>
-                  )}
+                <div key={svc.name} className="py-0.5">
+                  <div className="flex gap-3">
+                    <span className="text-text">{svc.name}</span>
+                    <span className="text-subtext0">
+                      {svc.image}
+                      {svc.latest && svc.latest !== svc.tag && ` → ${svc.latest}`}
+                    </span>
+                    <span
+                      className={svc.state === "running" ? "text-status-ok" : "text-status-warn"}
+                    >
+                      {svc.state}
+                    </span>
+                    {svc.updatable === true && (
+                      <span className="text-status-warn">update available</span>
+                    )}
+                    {svc.updatable === null && (
+                      <span className="text-subtext0">registry unknown</span>
+                    )}
+                    {svc.breaking && <span className="text-status-warn">⚠ major bump</span>}
+                    {(svc.cves ?? 0) > 0 && (
+                      <span className="text-status-error">⚠ {svc.cves} app CVE(s)</span>
+                    )}
+                    {svc.repo && <ServiceChangelog stackId={stack.id} service={svc.name} />}
+                  </div>
                 </div>
               ))}
               {stack.configFiles && (
@@ -469,6 +509,97 @@ function StackRow({
         </tr>
       )}
     </>
+  );
+}
+
+// M3.7: on-demand changelog + app-level advisory view for one service.
+// Fetches only when opened; GitHub failures render as graceful notes.
+function ServiceChangelog({ stackId, service }: { stackId: string; service: string }) {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<ChangelogData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = async () => {
+    if (open) return setOpen(false);
+    setOpen(true);
+    if (data) return;
+    try {
+      setData(await api<ChangelogData>(`/stacks/${stackId}/changelog?service=${service}`));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  return (
+    <span>
+      <button type="button" onClick={toggle} className="text-sapphire hover:text-text">
+        {open ? "▾ changelog" : "▸ changelog"}
+      </button>
+      {open && (
+        <div className="ml-4 mt-1 border-l border-surface1 pl-3">
+          {error && <p className="text-status-error">error: {error}</p>}
+          {!error && !data && <p className="text-subtext0">loading…</p>}
+          {data && (
+            <>
+              {data.notes === null && (
+                <p className="text-subtext0">release notes unavailable (GitHub fetch failed)</p>
+              )}
+              {data.notes?.length === 0 && (
+                <p className="text-subtext0">no published releases in the upgrade range</p>
+              )}
+              {data.notes?.map((n) => (
+                <div key={n.tag} className="mb-2">
+                  <div>
+                    <span className="text-text">{n.tag}</span>{" "}
+                    <span className="text-subtext1">{n.name}</span>
+                    {n.majorBump && <span className="text-status-warn"> ⚠ major</span>}{" "}
+                    {n.url && (
+                      <a href={n.url} target="_blank" rel="noreferrer" className="text-sapphire">
+                        [github]
+                      </a>
+                    )}
+                  </div>
+                  {n.body && (
+                    <pre className="mt-0.5 max-h-40 overflow-y-auto whitespace-pre-wrap text-subtext0">
+                      {n.body}
+                    </pre>
+                  )}
+                </div>
+              ))}
+              {data.advisories !== null && data.advisories !== undefined && (
+                <div className="mt-1">
+                  <div className="text-subtext0">
+                    app-level advisories for {data.current} (project's own GHSAs — not an OS-layer
+                    scan):
+                  </div>
+                  {data.advisories.length === 0 ? (
+                    <div className="text-status-ok">none affecting this version</div>
+                  ) : (
+                    data.advisories.map((a) => (
+                      <div key={a.id}>
+                        <span className="text-status-error">{a.severity.toUpperCase()}</span>{" "}
+                        <span className="text-text">{a.cve || a.id}</span>{" "}
+                        <span className="text-subtext1">{a.summary}</span>{" "}
+                        {a.url && (
+                          <a
+                            href={a.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sapphire"
+                          >
+                            [advisory]
+                          </a>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </span>
   );
 }
 
