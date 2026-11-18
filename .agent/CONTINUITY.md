@@ -29,7 +29,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 - [x] M3.5: Proxmox SSH host onboarding (Issue #25, branch feature/25-proxmox-host-onboarding, stacked on #24)
 - [x] M3.6: Compose stack inventory + selective updates (Issue #28, branch feature/28-compose-stack-inventory)
 - [x] NOC.0: UI cleanup + nav regroup (Issue #30, branch feature/30-ui-cleanup-nav-regroup)
-- [ ] M3.7: Changelogs + breaking-change surface + CVE matching (Issue #32, branch feature/32-changelogs-cve-matching)
+- [x] M3.7: Changelogs + breaking-change surface + CVE matching (Issue #32, branch feature/32-changelogs-cve-matching)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -267,3 +267,9 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 - Update-available computed ON the host via `docker buildx imagetools inspect` digest compare — host registry credentials cover private registries, zero registry secrets in YAHLM. Pinned-tag latest versions via Hub/GHCR tag lists, best-effort, 6h cache, degrades to updatable-only.
 - `container.update` is now stack-scoped (`kind=stack` jobs; default all = previous behavior); Guests section renamed Infra with stacks panel + CHECK NOW; dashboard gains services strip + hosts-needing-updates card; schedule stack picker.
 - Live-verified against the real homelab: 13 stacks, real update-available + latest-version data. Fixed test-isolation leak (nightly scan wrote fixture rows to operator hosts; mock now refuses non-test hosts). Server 107/107, web 12/12 (PR #29).
+### Changelogs + CVE matching (M3.7, 2026-11-18)
+- `server/src/changelogs.ts`: GitHub client — Releases notes filtered to the `current..latest` upgrade range, GHSA advisories intersected with the running version (semver-ish range math reusing `versionKey`/`versionGreater`). 6h in-process cache, optional token via Secret `github-token` (60/hr → 5000/hr), all fetches audited, failures degrade to null (never block).
+- Image→repo mapping precedence: OCI `org.opencontainers.image.source` label (captured at scan into `StackService.source`) → curated built-in map → null (link-out). No DB table — label-as-override.
+- List views never block on GitHub: `GET /api/stacks` annotates (`repo`/`breaking`/`cves`) from cache only and warms cold repos in the background; `GET /api/stacks/:id/changelog?service=` is the on-demand blocking view.
+- UI: MAJOR BUMP / CVE badges on stack rows, per-service changelog drawer ("app-level advisories — not an OS-layer scan" disclaimer), pre-flight `confirm()` before risky stack updates, dashboard services card `· N major · N cve`.
+- Browser-verified with real GHSA data (vaultwarden 1.36.0 → 15 advisories; postgres 18→19beta major flag). Server 117/117 incl. 10 new tests, web 12/12 (PR #33). Milestone 3 has one item left: M3.4 email reports.
