@@ -1,6 +1,7 @@
 import type { Host, JobStep, UpdateSchedule } from "@prisma/client";
 import { audit } from "./audit.js";
 import { prisma } from "./db.js";
+import { sendJobReport } from "./notify.js";
 import type { StepResult } from "./steps.js";
 import { containerUpdate, hostReboot, hostVerify, type OsUpdateData, osUpdate } from "./updates.js";
 
@@ -285,6 +286,9 @@ async function finishJob(jobId: string, status: string, output?: string): Promis
       data: { status, finishedAt: new Date() },
     });
     if (output) emit(jobId, "status", { status, output });
+    // M3.4: email report after any completed job; no-op when the email
+    // channel is off, and it never throws into job completion.
+    await sendJobReport(jobId);
   } catch {
     // deleted mid-job
   }

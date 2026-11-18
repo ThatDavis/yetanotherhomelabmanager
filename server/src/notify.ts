@@ -151,3 +151,60 @@ export async function allChannels(): Promise<{ email: boolean; webhooks: Webhook
     webhooks: await prisma.webhook.findMany({ where: { enabled: true } }),
   };
 }
+
+// M3.4: email report after any completed job (scheduled or manual) when the
+// email channel is enabled — the "did the nightly update work" heartbeat.
+// Reports never affect the job result: failures are audited, not thrown.
+export async function sendJobReport(jobId: string): Promise<void> {
+  if (!(await emailEnabled()) || !smtpConfigured()) return;
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    include: {
+      steps: { include: { host: { select: { alias: true } } }, orderBy: { id: "asc" } },
+      schedule: { select: { name: true } },
+    },
+  });
+  if (!job || job.status === "running") return;
+  const total = job.steps.length;
+  const okCount = job.steps.filter((s) => s.ok).length;
+  const fmt = (s: (typeof job.steps)[number]) => {
+    const head =
+      `${s.ok ? "ok  " : "FAIL"} ${s.host?.alias ?? "-"} ${s.name}` +
+      `${s.phase ? ` (${s.phase})` : ""} ${(s.durationMs / 1000).toFixed(1)}s`;
+    if (s.ok) return head;
+    const tail = s.output.split("\n").slice(-5).join("\n    ");
+    return tail ? `${head}\n    ${tail}` : head;
+  };
+  const failures = job.steps.filter((s) => !s.ok);
+  const body = [
+    `job ${job.id} — ${job.kind}${job.project ? ` (${job.project})` : ""}, trigger ${job.trigger}` +
+      `${job.schedule ? `, schedule "${job.schedule.name}"` : ""}`,
+    `started ${job.startedAt.toISOString()}, finished ${job.finishedAt?.toISOString() ?? "-"}`,
+    `${okCount}/${total} steps ok`,
+    "",
+    ...failures.map(fmt),
+    ...(failures.length ? [""] : []),
+    ...job.steps.filter((s) => s.ok).map(fmt),
+  ].join("\n");
+  try {
+    await getTransporter().sendMail({
+      from: emailConfig().from,
+      to: emailConfig().to,
+      subject: `[YAHLM] ${job.kind} ${job.status} — ${okCount}/${total} steps ok`,
+      text: body,
+    });
+    await audit({
+      action: "notify.report",
+      target: job.id,
+      ok: true,
+      output: `${job.kind} ${job.status}, ${okCount}/${total} steps ok`,
+    });
+  } catch (err) {
+    await audit({
+      action: "notify.report",
+      target: job.id,
+      ok: false,
+      output: (err as Error).message,
+    });
+  }
+}
