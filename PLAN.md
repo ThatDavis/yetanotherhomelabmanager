@@ -80,6 +80,7 @@ Goal: single pane of glass — SNMP device monitoring, live topology map with pe
 ## Active Feature
 
 _None — M3.4 complete (PR #35 merged); **Milestone 3 closed**. Next per locked sequence: NOC.1._
+**NOC.1: SNMP foundation** — Issue #36, branch `feature/36-snmp-foundation`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 
 ## Completed Features
 

@@ -50,6 +50,40 @@ export type SyncResult = {
 
 export type HostRegisterResult = { host: Host; existing: boolean };
 
+// NOC.1
+export type SnmpProfileMeta = {
+  id: string;
+  name: string;
+  version: string;
+  port: number;
+  _count: { devices: number };
+};
+
+export type DeviceInterface = {
+  id: string;
+  ifIndex: number;
+  name: string;
+  descr: string;
+  alias: string;
+  speedBps: string; // BigInt serialized
+  mac: string;
+  operStatus: string;
+};
+
+export type Device = {
+  id: string;
+  name: string;
+  address: string;
+  profileId: string;
+  profile: { id: string; name: string; version: string };
+  sysDescr: string;
+  sysObjectId: string;
+  sysName: string;
+  vendor: string;
+  lastSeenAt: string | null;
+  interfaceCount: number;
+};
+
 export type AgentIpsData = { guests: { vmid: number; name: string; addresses: string[] }[] };
 
 export type StackService = {

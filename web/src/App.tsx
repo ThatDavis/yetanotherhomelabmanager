@@ -4,6 +4,7 @@ import { AppShell } from "./components/AppShell";
 import { Alerts } from "./pages/Alerts";
 import { Audit } from "./pages/Audit";
 import { Dashboard } from "./pages/Dashboard";
+import { Devices } from "./pages/Devices";
 import { Guests } from "./pages/Guests";
 import { Jobs } from "./pages/Jobs";
 import { Login } from "./pages/Login";
@@ -20,6 +21,7 @@ export const routes = [
       { index: true, Component: Dashboard },
       { path: "uptime", Component: Uptime },
       { path: "alerts", Component: Alerts },
+      { path: "devices", Component: Devices },
       { path: "nodes", Component: Nodes },
       { path: "guests", Component: Guests },
       { path: "updates", Component: Updates },

@@ -248,3 +248,52 @@ model JobStep {
 
   @@index([jobId])
 }
+
+// NOC.1: SNMP device registration. Credentials live in the Secret store
+// (secretRef) — profiles carry only metadata. siteId is nullable now;
+// SMB multi-site scoping lands later per the 2026-11-15 deep-plan.
+model SnmpProfile {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  version   String // v2c | v3
+  port      Int      @default(161)
+  secretRef String // Secret id: v2c {"community"} | v3 {"user","authProto","authKey","privProto","privKey"}
+  devices   Device[]
+  createdAt DateTime @default(now())
+}
+
+// A network device (switch/router/AP/firewall) reachable via SNMP.
+// sys* fields are filled by device.identify; vendor is inferred from the
+// sysObjectID enterprise prefix.
+model Device {
+  id          String   @id @default(cuid())
+  name        String // operator-given; identify may refine from sysName
+  address     String
+  profileId   String
+  profile     SnmpProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  siteId      String? // reserved for SMB multi-site; always null today
+  sysDescr    String    @default("")
+  sysObjectId String    @default("")
+  sysName     String    @default("")
+  vendor      String    @default("")
+  lastSeenAt  DateTime?
+  interfaces  DeviceInterface[]
+  createdAt   DateTime  @default(now())
+
+  @@unique([address, profileId])
+}
+
+model DeviceInterface {
+  id          String  @id @default(cuid())
+  deviceId    String
+  device      Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  ifIndex     Int
+  name        String // ifName (ifXTable), falls back to ifDescr
+  descr       String  @default("")
+  alias       String  @default("") // ifAlias
+  speedBps    BigInt  @default(0) // ifHighSpeed * 1e6, else ifSpeed
+  mac         String  @default("")
+  operStatus  String  @default("") // up | down | testing | unknown
+
+  @@unique([deviceId, ifIndex])
+}

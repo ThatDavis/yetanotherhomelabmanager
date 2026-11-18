@@ -8,6 +8,7 @@ import { alertRoutes } from "./routes/alerts.js";
 import { auditRoutes } from "./routes/audit.js";
 import { authRoutes } from "./routes/auth.js";
 import { dashboardRoutes } from "./routes/dashboard.js";
+import { deviceRoutes } from "./routes/devices.js";
 import { hostRoutes } from "./routes/hosts.js";
 import { jobRoutes } from "./routes/jobs.js";
 import { nodeRoutes } from "./routes/nodes.js";
@@ -35,6 +36,7 @@ export function buildServer(opts: BuildOptions = {}) {
   app.register(alertRoutes);
   app.register(auditRoutes);
   app.register(dashboardRoutes);
+  app.register(deviceRoutes);
   app.register(hostRoutes);
   app.register(jobRoutes);
   app.register(nodeRoutes);

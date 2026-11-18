@@ -12,6 +12,7 @@ const SECTION_GROUPS = [
       { to: "/", label: "Dashboard", glyph: "▚", end: true },
       { to: "/uptime", label: "Uptime", glyph: "▲" },
       { to: "/alerts", label: "Alerts", glyph: "⚠" },
+      { to: "/devices", label: "Devices", glyph: "⇄" },
     ],
   },
   {
