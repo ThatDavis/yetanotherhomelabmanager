@@ -29,7 +29,7 @@
 - [x] Alerting on failed checks
 
 ### Milestone 3: Updates
-**Status:** In Progress (started 2026-10-01)
+**Status:** Complete (2026-11-18)
 - [x] **M3.1: Update scheduling** (Issue #20, branch `feature/20-update-scheduling`, PR #21) — weekly schedules, os.update (apt/dnf) + container.update (compose), job engine with SSE live status, run-now with pre-flight; see docs/SPEC.md §Milestone 3
 - [x] **M3.2: Reboot orchestration** (Issue #22, branch `feature/22-reboot-orchestration`, PR #23) — rolling reboots in bootOrder with recovery gate, schedule toggle + manual per-host reboot, self-host guards; see docs/SPEC.md §Milestone 3
 - [ ] **Updates + service discovery refinements** — operator review follow-up (scope TBD: tweaks to update scheduling and docker service discovery, pending operator input)
@@ -38,7 +38,6 @@
 - [x] **M3.6: Compose stack inventory + selective updates** — nightly stack scan (on-host registry checks, no stored registry secrets), Infra page rename with stacks panel, dashboard services strip + hosts-needing-updates card, stack-scoped container updates; design agreed with operator 2026-10-06, see docs/SPEC.md §Milestone 3
 - [x] **UI cleanup + nav regroup (NOC.0)** (Issue #30, branch `feature/30-ui-cleanup-nav-regroup`, PR #31) — stale M3.2 copy, dead code, node status on Nodes page, per-host osUpdatesPending on Infra, sidebar regrouped (MONITOR/INFRA/OPS/SYSTEM), shared dashboard poller, paper cuts; also fixed the since-scaffold broken vite dev proxy
 - [x] **M3.7: Changelogs + breaking-change surface + CVE matching** (Issue #32, branch `feature/32-changelogs-cve-matching`, PR #33) — GitHub Releases inline notes for upgrade ranges, major-bump flags, GHSA app-level CVE matching (mapping precedence: OCI source label → curated map → link-out), pre-flight risk summary, dashboard strip; see docs/SPEC.md §Milestone 3
-- [~] **M3.4: Email reports after jobs complete** (Issue #34, branch `feature/34-email-job-reports`) — in progress; see docs/SPEC.md §Milestone 3
 - [x] **M3.4: Email reports after jobs complete** (Issue #34, branch `feature/34-email-job-reports`, PR #35) — report on every completed job via M2.3 email channel; see docs/SPEC.md §Milestone 3 — **Milestone 3 complete (2026-11-18)**
 
 ### Milestone 6: NOC (network monitoring + topology)
@@ -80,7 +79,6 @@ Goal: single pane of glass — SNMP device monitoring, live topology map with pe
 
 ## Active Feature
 
-**M3.4: Email reports after jobs complete** — Issue #34, branch `feature/34-email-job-reports`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 _None — M3.4 complete (PR #35 merged); **Milestone 3 closed**. Next per locked sequence: NOC.1._
 
 ## Completed Features
