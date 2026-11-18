@@ -137,6 +137,15 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 - [x] Unmapped images degrade gracefully to a link-out; fetch failures never block updates
 - [x] Tests green (mapping precedence, range notes, major-bump flags, advisory intersect, degrade paths); audited fetches
 
+#### Feature: Email reports after jobs complete (M3.4)
+**Description:** Every completed job (scheduled or manual — update, reboot, stack) emails the operator a plain-text report when the email channel is enabled (the M2.3 Settings toggle + env SMTP). One rule, no new settings: scheduled runs give the "nightly update worked" heartbeat; report failures never affect the job result.
+**Acceptance Criteria:**
+- [x] Report sent from the single `finishJob` choke point for all job kinds/triggers
+- [x] Subject `[YAHLM] <kind> <status> — ok/total steps ok`; body lists failed steps first with output tails, then ok steps, plus job id, trigger, schedule, timings
+- [x] Reuses M2.3 email channel (toggle + env SMTP); no send and no audit noise when disabled or unconfigured
+- [x] Send audited as `notify.report` (ok/fail); transport failures audited, never thrown into job completion
+- [x] Tests green (enabled/disabled, failure report shape, broken transport leaves job succeeded)
+
 ---
 
 ## Future Milestones

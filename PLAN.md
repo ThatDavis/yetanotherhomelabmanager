@@ -38,7 +38,7 @@
 - [x] **M3.6: Compose stack inventory + selective updates** — nightly stack scan (on-host registry checks, no stored registry secrets), Infra page rename with stacks panel, dashboard services strip + hosts-needing-updates card, stack-scoped container updates; design agreed with operator 2026-10-06, see docs/SPEC.md §Milestone 3
 - [x] **UI cleanup + nav regroup (NOC.0)** (Issue #30, branch `feature/30-ui-cleanup-nav-regroup`, PR #31) — stale M3.2 copy, dead code, node status on Nodes page, per-host osUpdatesPending on Infra, sidebar regrouped (MONITOR/INFRA/OPS/SYSTEM), shared dashboard poller, paper cuts; also fixed the since-scaffold broken vite dev proxy
 - [x] **M3.7: Changelogs + breaking-change surface + CVE matching** (Issue #32, branch `feature/32-changelogs-cve-matching`, PR #33) — GitHub Releases inline notes for upgrade ranges, major-bump flags, GHSA app-level CVE matching (mapping precedence: OCI source label → curated map → link-out), pre-flight risk summary, dashboard strip; see docs/SPEC.md §Milestone 3
-- [ ] Email reports after jobs complete (external SMTP relay)
+- [~] **M3.4: Email reports after jobs complete** (Issue #34, branch `feature/34-email-job-reports`) — in progress; see docs/SPEC.md §Milestone 3
 
 ### Milestone 6: NOC (network monitoring + topology)
 **Status:** Planned (deep-plan validated 2026-11-15; starts after Milestone 3 closes — NOC.0 cleanup runs first, then M3.7 + email reports, then NOC.1)
@@ -80,6 +80,7 @@ Goal: single pane of glass — SNMP device monitoring, live topology map with pe
 ## Active Feature
 
 _None — M3.7 complete (PR #33 merged). One item left in Milestone 3: M3.4 email reports._
+**M3.4: Email reports after jobs complete** — Issue #34, branch `feature/34-email-job-reports`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 
 ## Completed Features
 
