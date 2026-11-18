@@ -148,6 +148,19 @@ Yet Another Home Lab Manager (YAHLM) is a single-operator web application for ma
 
 ---
 
+## Milestone 6 — NOC (network monitoring + topology)
+
+#### Feature: SNMP foundation (NOC.1)
+**Description:** Register network devices (UniFi, OPNsense/pfSense, Cisco Catalyst, MikroTik) via SNMP profiles and identify them on demand. SnmpProfile holds version (v2c/v3) + port + a Secret-store reference (community / v3 authPriv keys — never in device tables). `device.identify` reads sysDescr/sysObjectID/sysName/sysUpTime plus ifTable/ifXTable into Device + DeviceInterface; vendor inferred from the sysObjectID IANA enterprise prefix. Polling is NOC.2 — this feature is registration + identify + TEST only. v3 privacy is AES-only (net-snmp DES breaks on Node ≥17 OpenSSL 3).
+**Acceptance Criteria:**
+- [x] SnmpProfile/Device/DeviceInterface models; profile creds JSON in Secret store, deletable only when unused; devices cascade-delete interfaces
+- [x] `GET/POST/PUT/DELETE /api/devices`, `GET/POST/DELETE /api/snmp-profiles` (metadata only), audited `device.*` / `snmpProfile.*`
+- [x] TEST probes live SNMP without persisting; IDENTIFY persists sys* + vendor + full interface table (name/alias/MAC/speed/operStatus)
+- [x] Devices page under MONITOR: list, add/edit drawer with inline profile creation (v2c community or v3 authPriv), TEST/IDENTIFY actions, expandable interface view; empty state guides SNMP enablement (off by default on UniFi/MikroTik/TP-Link)
+- [x] Tests green (vendor inference, creds isolation, TEST ok/fail audited, identify persists interface rows, profile-in-use delete blocked)
+
+---
+
 ## Future Milestones
 
 - **M2 — Monitoring:** PVE/PBS dashboards; health checks (liveness, service endpoints, guest agent); alerting.
