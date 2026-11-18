@@ -21,7 +21,7 @@ Goal: Live status — ping checks, dashboards, health checks, alerting.
 - [x] M2.2: Live dashboard (cards + guest grid + status strip)
 - [x] M2.3: Notifications (email + webhook on state change) (Issue #18, branch feature/18-notifications-state-change)
 
-### Milestone 3: Updates (In Progress)
+### Milestone 3: Updates (Complete 2026-11-18)
 Goal: Scheduled updates with reboot orchestration, post-update verification, email reports.
 - [x] M3.1: Update scheduling (Issue #20, branch feature/20-update-scheduling)
 - [x] M3.2: Reboot orchestration (Issue #22, branch feature/22-reboot-orchestration)
@@ -277,3 +277,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 - List views never block on GitHub: `GET /api/stacks` annotates (`repo`/`breaking`/`cves`) from cache only and warms cold repos in the background; `GET /api/stacks/:id/changelog?service=` is the on-demand blocking view.
 - UI: MAJOR BUMP / CVE badges on stack rows, per-service changelog drawer ("app-level advisories — not an OS-layer scan" disclaimer), pre-flight `confirm()` before risky stack updates, dashboard services card `· N major · N cve`.
 - Browser-verified with real GHSA data (vaultwarden 1.36.0 → 15 advisories; postgres 18→19beta major flag). Server 117/117 incl. 10 new tests, web 12/12 (PR #33). Milestone 3 has one item left: M3.4 email reports.
+### Email reports after jobs complete (M3.4, 2026-11-18)
+- Every completed job emails a plain-text report when the M2.3 email channel is enabled — one rule (option A), zero new settings; heartbeat confirms nightly updates ran.
+- `sendJobReport` (notify.ts) reuses the M2.3 transporter/toggle/test seam; hooked at the single `finishJob` choke point (all kinds/triggers); subject `[YAHLM] <kind> <status> — ok/total steps ok`, failures first with output tails; audited `notify.report`; send failures never affect the job.
+- 4 new tests (enabled/disabled/failure-shape/broken-transport); live-verified (dead SMTP → audited ECONNREFUSED, job succeeded). Server 121/121, web 12/12 (PR #35). **Milestone 3 complete** — next per locked sequence: NOC.1.
