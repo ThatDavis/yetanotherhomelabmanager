@@ -32,7 +32,7 @@ async function remoteDigest(host: Host, ref: string): Promise<string | null> {
 
 const VERSION_PREFIX = /^(v?\d+(?:\.\d+){0,2})/;
 
-function versionKey(tag: string): number[] | null {
+export function versionKey(tag: string): number[] | null {
   const m = VERSION_PREFIX.exec(tag);
   const key = m?.[1];
   if (!key) return null;
@@ -42,7 +42,7 @@ function versionKey(tag: string): number[] | null {
     .map((n) => Number.parseInt(n, 10));
 }
 
-function versionGreater(a: number[], b: number[]): boolean {
+export function versionGreater(a: number[], b: number[]): boolean {
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     const d = (a[i] ?? 0) - (b[i] ?? 0);
     if (d !== 0) return d > 0;
@@ -163,6 +163,7 @@ export type StackService = {
   tag: string; // "" when untagged (digest-only refs)
   digest: string; // local image digest, "" when unknown
   version: string; // OCI version label, "" when absent
+  source: string; // OCI source label (repo URL), "" when absent — M3.7 repo mapping
   state: string; // running, exited, ...
   configHash: string; // compose config-hash label, "" when absent
   updatable: boolean | null; // null = not checked (registry pass fills this)
@@ -238,6 +239,7 @@ function serviceFromContainer(c: InspectEntry): StackService | null {
     tag,
     digest,
     version: labels["org.opencontainers.image.version"] ?? labels["org.label-schema.version"] ?? "",
+    source: labels["org.opencontainers.image.source"] ?? labels["org.label-schema.vcs-url"] ?? "",
     state: c.State?.Status ?? "unknown",
     configHash: labels["com.docker.compose.config-hash"] ?? "",
     updatable: null,

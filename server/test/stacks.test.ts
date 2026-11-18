@@ -38,6 +38,7 @@ const INSPECT = JSON.stringify([
         "com.docker.compose.service": "app",
         "com.docker.compose.config-hash": "aaa",
         "org.opencontainers.image.version": "1.2.3",
+        "org.opencontainers.image.source": "https://github.com/me/web",
       },
     },
     RepoDigests: ["ghcr.io/me/web@sha256:abc123"],
@@ -168,6 +169,7 @@ test("stacks.scan persists projects with services and no drift when hashes match
       tag: "1.2.3",
       digest: "abc123",
       version: "1.2.3",
+      source: "https://github.com/me/web",
       state: "running",
       configHash: "aaa",
       updatable: false, // remote digest equals the local one

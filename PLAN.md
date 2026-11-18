@@ -79,7 +79,7 @@ Goal: single pane of glass — SNMP device monitoring, live topology map with pe
 
 ## Active Feature
 
-_None — NOC.0 complete (PR #31 merged). Next per locked sequence: M3.7 + email reports, then NOC.1._
+**M3.7: Changelogs + breaking-change surface + CVE matching** — Issue #32, branch `feature/32-changelogs-cve-matching`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 
 ## Completed Features
 

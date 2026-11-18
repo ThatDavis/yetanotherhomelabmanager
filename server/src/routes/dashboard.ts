@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
+import { cachedAdvisoriesForVersion, repoForImage } from "../changelogs.js";
 import { prisma } from "../db.js";
+import { versionKey } from "../stacks.js";
 
 export function dashboardRoutes(app: FastifyInstance) {
   // Everything the live dashboard needs in one round-trip.
@@ -29,11 +31,22 @@ export function dashboardRoutes(app: FastifyInstance) {
     }
 
     // M3.6 services strip: cached scan data, never blocks on SSH.
+    // M3.7: breaking = local semver major-bump compare; CVE counts are
+    // cache-only (cold = not counted; the stacks list warms the cache).
     const stacksTotal = stacks.length;
     let stacksUpdatable = 0;
     let stacksDrift = 0;
+    let stacksBreaking = 0;
+    let stacksWithCves = 0;
     for (const s of stacks) {
-      let services: { updatable?: boolean | null }[] = [];
+      let services: {
+        updatable?: boolean | null;
+        image?: string;
+        tag?: string;
+        version?: string;
+        source?: string;
+        latest?: string | null;
+      }[] = [];
       try {
         const parsed: unknown = JSON.parse(s.services);
         if (Array.isArray(parsed)) services = parsed;
@@ -42,6 +55,23 @@ export function dashboardRoutes(app: FastifyInstance) {
       }
       if (services.some((x) => x.updatable === true)) stacksUpdatable += 1;
       if (s.drift) stacksDrift += 1;
+      if (
+        services.some((x) => {
+          const cur = versionKey(x.version || x.tag || "");
+          const lat = x.latest ? versionKey(x.latest) : null;
+          return cur?.[0] !== undefined && lat?.[0] !== undefined && lat[0] > cur[0];
+        })
+      )
+        stacksBreaking += 1;
+      if (
+        services.some((x) => {
+          const repo = repoForImage(x.image ?? "", x.source ?? "");
+          return repo
+            ? (cachedAdvisoriesForVersion(repo, x.version || x.tag || "") ?? []).length > 0
+            : false;
+        })
+      )
+        stacksWithCves += 1;
     }
     const hostsNeedingUpdates = hosts.filter((h) => h.osUpdatesPending > 0);
 
@@ -59,6 +89,8 @@ export function dashboardRoutes(app: FastifyInstance) {
         stacksTotal,
         stacksUpdatable,
         stacksDrift,
+        stacksBreaking,
+        stacksWithCves,
         hostsNeedingUpdates: hostsNeedingUpdates.length,
       },
     };

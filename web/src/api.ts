@@ -61,6 +61,20 @@ export type StackService = {
   state: string;
   updatable: boolean | null;
   latest: string | null;
+  // M3.7 annotations (added by GET /stacks; absent on older cached rows)
+  source?: string;
+  repo?: string | null;
+  breaking?: boolean | null;
+  cves?: number | null;
+};
+
+export type ChangelogData = {
+  repo: string | null;
+  repoUrl?: string;
+  current?: string;
+  latest?: string | null;
+  notes?: { tag: string; name: string; body: string; url: string; majorBump: boolean }[] | null;
+  advisories?: { id: string; cve: string; severity: string; summary: string; url: string }[] | null;
 };
 
 export type ComposeStack = {
@@ -174,6 +188,8 @@ export type DashboardData = {
     stacksTotal: number;
     stacksUpdatable: number;
     stacksDrift: number;
+    stacksBreaking: number;
+    stacksWithCves: number;
     hostsNeedingUpdates: number;
   };
 };
