@@ -43,7 +43,7 @@
 ### Milestone 6: NOC (network monitoring + topology)
 **Status:** Planned (deep-plan validated 2026-11-15; starts after Milestone 3 closes — NOC.0 cleanup runs first, then M3.7 + email reports, then NOC.1)
 Goal: single pane of glass — SNMP device monitoring, live topology map with per-link rates, later per-conversation flows; homelab-first, SMB-extensible data model (nullable siteId, scoped SNMP profiles), no multi-user UI.
-- [ ] **NOC.1: SNMP foundation** — SnmpProfile (v2c/v3, creds in Secret store) + Device/Interface models, device.identify step, Devices page with TEST; targets: UniFi, OPNsense/pfSense, Cisco Catalyst, MikroTik (net-snmp npm lib)
+- [~] **NOC.1: SNMP foundation** (Issue #36, branch `feature/36-snmp-foundation`) — in progress; — SnmpProfile (v2c/v3, creds in Secret store) + Device/Interface models, device.identify step, Devices page with TEST; targets: UniFi, OPNsense/pfSense, Cisco Catalyst, MikroTik (net-snmp npm lib)
 - [ ] **NOC.2: Polling + counters** — device.poll 60s staggered, HC counter rollup (1m/48h → 5m/30d → 1h/1y), interface rate graphs, device/interface down alerting via existing notify module
 - [ ] **NOC.3: Topology + Map** — device.topology (LLDP-MIB lldpRemTable + Cisco CDP cdpCacheTable, 5-min walk), ghost nodes for unmanaged neighbors, manual links, Map page (edge width/color = utilization, edge/device drawers)
 - [ ] **NOC.4: UniFi controller topology spike + vendor MIB cards** — timeboxed spike on unofficial controller API (UniFi exposes no lldpRemTable via SNMP); integrate if stable; Synology/TrueNAS/UPS vendor-MIB data cards
@@ -79,7 +79,6 @@ Goal: single pane of glass — SNMP device monitoring, live topology map with pe
 
 ## Active Feature
 
-_None — M3.4 complete (PR #35 merged); **Milestone 3 closed**. Next per locked sequence: NOC.1._
 **NOC.1: SNMP foundation** — Issue #36, branch `feature/36-snmp-foundation`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 
 ## Completed Features
