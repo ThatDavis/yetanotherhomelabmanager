@@ -30,6 +30,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 - [x] M3.6: Compose stack inventory + selective updates (Issue #28, branch feature/28-compose-stack-inventory)
 - [x] NOC.0: UI cleanup + nav regroup (Issue #30, branch feature/30-ui-cleanup-nav-regroup)
 - [x] M3.7: Changelogs + breaking-change surface + CVE matching (Issue #32, branch feature/32-changelogs-cve-matching)
+- [x] M3.4: Email reports after jobs complete (Issue #34, branch feature/34-email-job-reports)
 
 ### Open Questions
 - [ ] Minimal Proxmox API token privilege set (resolve during M1)
@@ -188,6 +189,7 @@ Goal: Scheduled updates with reboot orchestration, post-update verification, ema
 |  |    ✓ GHSA advisory fetch + running-version intersect + CVE flags |
 |  |    ✓ UI: changelog view, breaking/CVE badges, dashboard slot |
 | 2026-11-17 | v Built: changelogs.ts (GitHub client, 6h cache, audited fetches, token via Secret id github-token); repoForImage (label → curated map → null); releaseNotesInRange + advisoriesForVersion (GHSA range intersect); cached reads + background warm so list views never block; GET /stacks annotated (repo/breaking/cves) + GET /stacks/:id/changelog; dashboard strip filled (major/cve counts); Infra badges (MAJOR BUMP, CVE n, per-service changelog drawer); pre-flight confirm on risky stack updates — server 117/117, web 12/12, biome clean; browser-verified against real homelab (vaultwarden 1.36.0 → 15 real GHSA hits, dashboard "1 major · 1 cve", changelog drawer rendered live advisories, pre-flight blocked risky UPDATE). |
+| 2026-11-18 | Completed feature: Email job reports (M3.4, PR #35, CI green, merged 2026-11-18) — **Milestone 3 complete**. DoD all PASS (server 121/121, web 12/12, biome clean, no web changes); live-verified end-to-end (real job, dead SMTP → notify.report FAIL audited, job succeeded). |
 | 2026-11-18 | v Built: sendJobReport (notify.ts) — plain-text job report (subject [YAHLM] <kind> <status> — ok/total, failures first with output tails); hooked into finishJob for all kinds/triggers; reuses M2.3 toggle + env SMTP + transporter test seam; audited notify.report; 4 new tests (enabled/disabled/failure-shape/broken-transport) — server 121/121, web 12/12, biome clean; live-verified end-to-end (real job -> ECONNREFUSED audited, job still succeeded). |
 | 2026-11-18 | Completed feature: Changelogs + CVE matching (M3.7, PR #33, CI green, merged 2026-11-18). DoD all PASS (server 117/117, web 12/12, biome clean); browser-verified with real GHSA data (vaultwarden 1.36.0 → 15 advisories); pre-flight guard blocks risky stack UPDATE. 1 WARN: no new web component tests, matches convention. |
 | 2026-11-16 | Completed feature: UI cleanup + nav regroup (NOC.0, PR #31, merged 2026-11-16). DoD all PASS (server 107/107, web 12/12, biome 89 files); browser-verified on :3000 and :5173 with real data. 1 WARN: no new web component tests, matches convention. Fixed the vite dev proxy (broken since scaffold) found during verification. |
