@@ -79,7 +79,6 @@ Goal: single pane of glass — SNMP device monitoring, live topology map with pe
 
 ## Active Feature
 
-_None — M3.7 complete (PR #33 merged). One item left in Milestone 3: M3.4 email reports._
 **M3.4: Email reports after jobs complete** — Issue #34, branch `feature/34-email-job-reports`. Sub-tasks tracked in `.agent/CONTINUITY.md` [PROGRESS].
 
 ## Completed Features
