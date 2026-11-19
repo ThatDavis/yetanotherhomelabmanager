@@ -34,7 +34,8 @@ function openSession(address: string, port: number, creds: SnmpCreds): Session {
   const opts = { port, timeout: 5000, retries: 1 };
   const raw =
     creds.version === "v2c"
-      ? snmp.createSession(address, creds.community, opts)
+      ? // version defaults to v1 — pin v2c explicitly (found by wire test)
+        snmp.createSession(address, creds.community, { ...opts, version: snmp.Version2c })
       : snmp.createV3Session(
           address,
           {
